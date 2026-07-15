@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Live-daemon `tests/integration/` suite (connection, helpers, loops, DaemonSession, pool/TurnRunner, jobs)
 - `make test-integration` with skip-if-daemon-down / `SOOTHE_INTEGRATION=1` force-fail
 
+### Changed
+- Require `soothe-sdk>=0.8.1` (canonical `soothe_sdk.wire` / `soothe_sdk.paths`)
+
 ### Fixed
 - `WebSocketManagedClient.send_message` coerces flat appkit payloads (`loop_input`, `command_request`) to protocol-1 envelopes so TurnRunner works against envelope-only daemons
 

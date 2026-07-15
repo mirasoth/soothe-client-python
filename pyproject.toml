@@ -23,7 +23,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "soothe-sdk>=0.5.25,<1.0.0",
+    "soothe-sdk>=0.8.1,<1.0.0",
     "pydantic>=2.0.0,<3.0.0",
     "websockets>=12.0",
 ]
