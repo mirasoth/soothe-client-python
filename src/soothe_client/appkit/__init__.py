@@ -9,9 +9,8 @@ in the application (e.g. soothe-cli). Building blocks:
 - ``DaemonSession`` — dual-socket loop session + ``iter_turn_chunks``
 - ``EventClassifier`` / ``extract_thinking_step`` — deliverable terminal mapping
 - ``SSEBroadcaster`` — drop-on-full SSE-style fan-out
+- ``ConnectionPool`` / ``TurnRunner`` — pooled multi-session turn execution
 - ``SessionStore`` — persistence seam (Protocol)
-
-``ConnectionPool`` / ``TurnRunner`` product wiring follows in a later slice.
 """
 
 from __future__ import annotations
@@ -27,7 +26,22 @@ from soothe_client.appkit.classifier import (
 )
 from soothe_client.appkit.daemon_session import DEFAULT_POST_IDLE_DRAIN_S, DaemonSession
 from soothe_client.appkit.events import is_loop_scoped_event, unwrap_next
+from soothe_client.appkit.managed_client import (
+    BootstrapFunc,
+    ClientFactory,
+    ManagedClient,
+    WebSocketManagedClient,
+    default_bootstrap_func,
+    default_client_factory,
+)
 from soothe_client.appkit.observability import TurnEventStats
+from soothe_client.appkit.pool import (
+    ConnectionPool,
+    ErrPoolExhausted,
+    PoolConfig,
+    PooledConn,
+    default_pool_config,
+)
 from soothe_client.appkit.query_gate import ErrQueryBusy, QueryGate
 from soothe_client.appkit.session_store import SessionEntry, SessionMessage, SessionStore
 from soothe_client.appkit.thinking_step import (
@@ -43,21 +57,43 @@ from soothe_client.appkit.turn import (
     TurnEventPipeline,
     run_turn_pipeline,
 )
+from soothe_client.appkit.turn_runner import (
+    Attachment,
+    ErrQueryTimeout,
+    InputOpts,
+    OnComplete,
+    OnError,
+    TurnConfig,
+    TurnRunner,
+    input_message_for_loop,
+)
 
 __all__ = [
     "DEFAULT_POST_IDLE_DRAIN_S",
     "DEFAULT_THINKING_STEP_EVENTS",
+    "Attachment",
+    "BootstrapFunc",
+    "ClientFactory",
+    "ConnectionPool",
     "DaemonSession",
     "EVENT_FINAL_REPORT",
+    "ErrPoolExhausted",
     "ErrQueryBusy",
+    "ErrQueryTimeout",
     "ChatEventResult",
     "ChatEventTerminal",
     "ClassifierConfig",
     "EventClassifier",
+    "InputOpts",
+    "ManagedClient",
+    "OnComplete",
+    "OnError",
     "PRIORITY_CRITICAL",
     "PRIORITY_HIGH",
     "PRIORITY_LOW",
     "PRIORITY_NORMAL",
+    "PoolConfig",
+    "PooledConn",
     "QueryGate",
     "SSEBroadcaster",
     "SSEEvent",
@@ -65,9 +101,16 @@ __all__ = [
     "SessionMessage",
     "SessionStore",
     "TurnApplyBatcher",
+    "TurnConfig",
     "TurnEventPipeline",
     "TurnEventStats",
+    "TurnRunner",
+    "WebSocketManagedClient",
+    "default_bootstrap_func",
+    "default_client_factory",
+    "default_pool_config",
     "extract_thinking_step",
+    "input_message_for_loop",
     "is_loop_scoped_event",
     "run_turn_pipeline",
     "should_drop_stream_chunk_early",

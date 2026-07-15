@@ -48,9 +48,8 @@ Reusable application mechanics (product-agnostic):
 | `DaemonSession` | Dual-socket loop session + `iter_turn_chunks` (CLI-grade) |
 | `EventClassifier` / `extract_thinking_step` | Deliverable / thinking-step mapping |
 | `SSEBroadcaster` | Drop-on-full SSE-style fan-out |
+| `ConnectionPool` / `TurnRunner` | Pooled multi-session turn execution |
 | `SessionStore` | Persistence seam (Protocol) |
-
-`ConnectionPool` / `TurnRunner` product wiring follows later.
 
 ```python
 from soothe_client.appkit import DaemonSession
