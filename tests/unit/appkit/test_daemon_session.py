@@ -60,9 +60,46 @@ async def test_daemon_session_list_loops_uses_rpc_client(monkeypatch: pytest.Mon
 
     result = await session.list_loops(limit=5)
     assert result == {"loops": []}
-    session._rpc_client.request.assert_awaited_once_with(
-        "loop_list", {"limit": 5}, timeout=15.0
-    )
+    session._rpc_client.request.assert_awaited_once_with("loop_list", {"limit": 5}, timeout=15.0)
+
+
+@pytest.mark.asyncio
+async def test_ensure_connected_uses_reattach_and_probe() -> None:
+    session = DaemonSession("ws://127.0.0.1:9")
+    session._loop_id = "loop-alive"
+    session._client.is_connection_alive = MagicMock(return_value=False)
+    session._client.is_disconnected = MagicMock(return_value=True)
+    session._client.reconnect = AsyncMock()
+    session._client.reattach_and_probe = AsyncMock()
+    session._rpc_connected = True
+    session._rpc_client.close = AsyncMock()
+
+    await session.ensure_connected()
+
+    session._client.reconnect.assert_awaited_once()
+    session._client.reattach_and_probe.assert_awaited_once()
+    assert session._loop_id == "loop-alive"
+    assert session._rpc_connected is False
+
+
+@pytest.mark.asyncio
+async def test_ensure_connected_stale_falls_back_to_bootstrap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from soothe_client.errors import StaleLoopError
+
+    session = DaemonSession("ws://127.0.0.1:9")
+    session._loop_id = "loop-stale"
+    session._client.is_connection_alive = MagicMock(return_value=False)
+    session._client.is_disconnected = MagicMock(return_value=True)
+    session._client.reconnect = AsyncMock()
+    session._client.reattach_and_probe = AsyncMock(side_effect=StaleLoopError("loop-stale"))
+    boot = AsyncMock(return_value={"type": "status", "loop_id": "loop-fresh"})
+    monkeypatch.setattr(session, "_bootstrap_loop", boot)
+
+    await session.ensure_connected()
+
+    boot.assert_awaited_once_with(resume_loop_id=None)
 
 
 @pytest.mark.asyncio

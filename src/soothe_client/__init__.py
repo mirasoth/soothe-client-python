@@ -12,6 +12,13 @@ import importlib.metadata
 from soothe_sdk.core.types import VerbosityLevel
 from soothe_sdk.wire.codec import ProtocolError
 
+from soothe_client.errors import (
+    DaemonError,
+    DisconnectCause,
+    ReconnectError,
+    StaleLoopError,
+    disconnect_cause_name,
+)
 from soothe_client.helpers import (
     check_daemon_status,
     fetch_config_section,
@@ -94,6 +101,11 @@ __all__ = [
     "WebSocketClient",
     "VerbosityLevel",
     "ProtocolError",
+    "DaemonError",
+    "DisconnectCause",
+    "ReconnectError",
+    "StaleLoopError",
+    "disconnect_cause_name",
     "WsCommandClient",
     "SyncWsCommandClient",
     "ws_command_client_from_config",

@@ -46,9 +46,11 @@ Reusable application mechanics (product-agnostic):
 | `QueryGate` | Single-flight cancel-before-context gating |
 | `TurnEventPipeline` / `run_turn_pipeline` | Reader / processor / applier concurrency |
 | `DaemonSession` | Dual-socket loop session + `iter_turn_chunks` (CLI-grade) |
+| `EventClassifier` / `extract_thinking_step` | Deliverable / thinking-step mapping |
+| `SSEBroadcaster` | Drop-on-full SSE-style fan-out |
 | `SessionStore` | Persistence seam (Protocol) |
 
-Pool / TurnRunner / EventClassifier / SSE parity with Go/TS follows later.
+`ConnectionPool` / `TurnRunner` product wiring follows later.
 
 ```python
 from soothe_client.appkit import DaemonSession

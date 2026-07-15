@@ -126,8 +126,16 @@ class DaemonSession:
         return await self._bootstrap_loop(resume_loop_id=loop_id)
 
     async def ensure_connected(self) -> None:
-        """Reconnect and re-subscribe when the stream WebSocket died."""
-        if self._client.is_connection_alive():
+        """Reconnect and re-subscribe when the stream WebSocket died.
+
+        Prefers ``reconnect`` + ``reattach_and_probe`` when a loop id is known;
+        falls back to bootstrap on ``StaleLoopError``.
+        """
+        from soothe_client.errors import StaleLoopError
+
+        is_disconn = getattr(self._client, "is_disconnected", None)
+        disconnected = bool(is_disconn()) if callable(is_disconn) else False
+        if self._client.is_connection_alive() and not disconnected:
             return
 
         resume_loop_id = self._loop_id
@@ -135,12 +143,35 @@ class DaemonSession:
             "Daemon WebSocket closed; reconnecting%s",
             f" to loop {resume_loop_id[:8]}..." if resume_loop_id else "",
         )
-        await self._client.close()
         if self._rpc_connected:
             await self._rpc_client.close()
             self._rpc_connected = False
 
-        await connect_websocket_with_retries(self._client)
+        reconnect = getattr(self._client, "reconnect", None)
+        if callable(reconnect):
+            await reconnect()
+        else:
+            await self._client.close()
+            await connect_websocket_with_retries(self._client)
+
+        if resume_loop_id:
+            reattach = getattr(self._client, "reattach_and_probe", None)
+            if callable(reattach):
+                try:
+                    await reattach(
+                        resume_loop_id,
+                        stream_delivery=self._resolve_stream_delivery_mode(),
+                    )
+                    self._loop_id = resume_loop_id
+                    return
+                except StaleLoopError:
+                    logger.warning(
+                        "Loop %s stale after reattach; bootstrapping fresh session",
+                        resume_loop_id[:16],
+                        exc_info=True,
+                    )
+                    resume_loop_id = None
+
         await self._bootstrap_loop(resume_loop_id=resume_loop_id)
 
     async def close(self, *, handshake_timeout: float = 2.0) -> None:

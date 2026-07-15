@@ -16,6 +16,7 @@ import websockets.exceptions
 from soothe_sdk.ux.loop_stream import is_stream_terminal_wire_dict
 from soothe_sdk.wire.protocol import decode_websocket_text, encode_websocket_text
 
+from soothe_client.errors import DisconnectCause, ReconnectError, StaleLoopError
 from soothe_client.intent_hints import validate_loop_input_intent_hint
 
 logger = logging.getLogger(__name__)
@@ -278,6 +279,11 @@ class WebSocketClient:
         # IG-556 P1.3: delivery ack sequence per loop for daemon drain gating.
         self._delivery_recv_seq: dict[str, int] = {}
         self._delivery_acked_seq: dict[str, int] = {}
+        # Mid-session drop signal (RFC-450 §8.3 / RFC-629 Layer 0).
+        self._disconn_event = asyncio.Event()
+        self._disconn_cause: DisconnectCause | None = None
+        self._disconn_fired = False
+        self._on_disconnected: Callable[[DisconnectCause], None] | None = None
 
     async def connect(self) -> None:
         """Connect to the daemon.
@@ -293,6 +299,7 @@ class WebSocketClient:
         self._handshake_complete = False
         self._negotiated_capabilities = set()
         self._heartbeat_interval_ms = 0
+        self._reset_disconnect_signal()
 
         try:
             # Transport-level keepalive: daemon heartbeats are loop-scoped and only
@@ -357,7 +364,10 @@ class WebSocketClient:
             with contextlib.suppress(asyncio.QueueFull):
                 await self._enqueue_inbound(None)
         finally:
+            was_connected = self._connected
             self._connected = False
+            if was_connected:
+                self._signal_disconnect(DisconnectCause.UNCLEAN)
 
     async def _respond_pong(self) -> None:
         """Respond to a daemon ``ping`` with ``pong`` (RFC-450 §8.3)."""
@@ -529,6 +539,10 @@ class WebSocketClient:
             handshake_timeout: Seconds to wait for the WebSocket close handshake.
                 Use a small value (e.g. 0.3) on interactive client exit.
         """
+        # Intentional teardown is a clean drop (loops keep running server-side).
+        if self._connected or self._ws is not None:
+            self._signal_disconnect(DisconnectCause.CLEAN)
+
         # Cancel heartbeat task
         hb_task = self._heartbeat_task
         self._heartbeat_task = None
@@ -1116,6 +1130,121 @@ class WebSocketClient:
         if as_node:
             params["as_node"] = as_node
         return await self.request("loop_state_update", params, timeout=timeout)
+
+    def _reset_disconnect_signal(self) -> None:
+        """Clear the mid-session drop signal (called from ``connect``)."""
+        self._disconn_event = asyncio.Event()
+        self._disconn_cause = None
+        self._disconn_fired = False
+
+    def _signal_disconnect(self, cause: DisconnectCause) -> None:
+        """Fire the disconnect signal exactly once."""
+        if self._disconn_fired:
+            return
+        self._disconn_fired = True
+        self._disconn_cause = cause
+        self._disconn_event.set()
+        callback = self._on_disconnected
+        if callback is not None:
+            with contextlib.suppress(Exception):
+                callback(cause)
+
+    def set_disconnected_callback(
+        self,
+        callback: Callable[[DisconnectCause], None] | None,
+    ) -> None:
+        """Register a sync callback invoked once when the connection drops."""
+        self._on_disconnected = callback
+
+    def is_disconnected(self) -> bool:
+        """Return whether the disconnect signal has fired."""
+        return self._disconn_fired
+
+    def disconnect_cause(self) -> DisconnectCause | None:
+        """Return the disconnect cause, or None if still connected."""
+        if not self._disconn_fired:
+            return None
+        return self._disconn_cause if self._disconn_cause is not None else DisconnectCause.UNCLEAN
+
+    async def wait_disconnected(self) -> DisconnectCause:
+        """Wait until the disconnect signal fires and return its cause."""
+        await self._disconn_event.wait()
+        cause = self.disconnect_cause()
+        return cause if cause is not None else DisconnectCause.UNCLEAN
+
+    async def reconnect(
+        self,
+        *,
+        max_attempts: int = 10,
+        initial_delay_s: float = 0.5,
+        max_delay_s: float = 10.0,
+    ) -> None:
+        """Re-dial and re-handshake after a drop (does not re-subscribe loops)."""
+        last_err: BaseException | None = None
+        delay = initial_delay_s
+        for attempt in range(1, max_attempts + 1):
+            try:
+                await self.connect()
+                await self.request_connection_init()
+                await self.wait_for_connection_ack()
+                return
+            except Exception as exc:
+                last_err = exc
+            if attempt < max_attempts:
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, max_delay_s)
+        raise ReconnectError(self._url, max_attempts, last_err)
+
+    async def reattach_and_probe(
+        self,
+        loop_id: str,
+        *,
+        reattach_timeout_s: float = 15.0,
+        subscribe_timeout_s: float = 10.0,
+        probe_timeout_s: float = 5.0,
+        stream_delivery: str = "adaptive",
+        wire_tier: str = "full",
+    ) -> None:
+        """Resume a loop after reconnect: reattach, subscribe, ``loop_get`` probe.
+
+        Raises:
+            ValueError: Empty ``loop_id``.
+            StaleLoopError: Reattach accepted but liveness probe failed.
+            ProtocolError / ConnectionError: Transport or RPC failures before probe.
+        """
+        from soothe_sdk.wire.codec import ProtocolError
+
+        lid = str(loop_id or "").strip()
+        if not lid:
+            raise ValueError("reattach_and_probe requires a loop id")
+
+        try:
+            await self.request(
+                "loop_reattach",
+                {"loop_id": lid},
+                timeout=reattach_timeout_s,
+            )
+        except ProtocolError as exc:
+            raise StaleLoopError(lid, exc) from exc
+
+        await self.subscribe(
+            "loop_events",
+            {
+                "loop_id": lid,
+                "stream_delivery": stream_delivery,
+                "wire_tier": wire_tier,
+            },
+            timeout=subscribe_timeout_s,
+        )
+
+        try:
+            await self.loop_get(lid, verbose=False, timeout=probe_timeout_s)
+        except ProtocolError as exc:
+            if getattr(exc, "code", None) == -32200:
+                raise StaleLoopError(lid, exc) from exc
+            raise StaleLoopError(lid, exc) from exc
+        except Exception as exc:
+            raise StaleLoopError(lid, exc) from exc
 
     async def list_skills(self, *, timeout: float = 15.0) -> dict[str, Any]:
         """Request wire-safe skill metadata from the daemon (RFC-400 ``skills_list``)."""
