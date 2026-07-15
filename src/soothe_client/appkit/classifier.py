@@ -49,11 +49,15 @@ class ClassifierConfig:
             persisted as final (avoids finishing on stub ACKs). Defaults to 8.
         thinking_step_events: Optional override of the default thinking-step
             event allowlist.
+        treat_status_idle_as_complete: When true, a status frame with
+            ``state==idle`` and non-empty accumulated assistant text completes
+            the turn (typical for direct-model turns). Default false.
     """
 
     deliverable_phases: frozenset[str] | set[str]
     min_deliverable_runes: int = 8
     thinking_step_events: frozenset[str] | set[str] | None = None
+    treat_status_idle_as_complete: bool = False
 
 
 class EventClassifier:
@@ -69,6 +73,7 @@ class EventClassifier:
         self._thinking_step_events = (
             frozenset(cfg.thinking_step_events) if cfg.thinking_step_events is not None else None
         )
+        self._treat_status_idle_as_complete = cfg.treat_status_idle_as_complete
 
     def classify(self, msg: Any, accumulated: str = "") -> ChatEventResult:
         """Inspect one decoded event and return its outcome."""
@@ -78,6 +83,13 @@ class EventClassifier:
         """Report whether a persisted completion_event is user-facing."""
         if not event_type:
             return False
+        if event_type in (
+            "status.idle",
+            "idle_timeout",
+            "query_timeout",
+            "stream_closed",
+        ):
+            return True
         if event_type == EVENT_FINAL_REPORT:
             return True
         prefix = "soothe.protocol.message."
@@ -121,7 +133,7 @@ class EventClassifier:
     def _failed_result(self, err: BaseException) -> ChatEventResult:
         return ChatEventResult(terminal=ChatEventTerminal.FAILED_COMPLETE, err=err)
 
-    def _process_chat_event(self, msg: Any, _accumulated: str) -> ChatEventResult:
+    def _process_chat_event(self, msg: Any, accumulated: str) -> ChatEventResult:
         if not isinstance(msg, dict):
             return ChatEventResult(terminal=ChatEventTerminal.CONTINUE)
 
@@ -129,7 +141,17 @@ class EventClassifier:
         if typ == "next":
             return self._classify_next_envelope(msg)
 
-        if typ in ("response", "complete", "receipt_response", "connection_ack", "status"):
+        if typ in ("response", "complete", "receipt_response", "connection_ack"):
+            return ChatEventResult(terminal=ChatEventTerminal.CONTINUE)
+
+        if typ == "status":
+            state = str(msg.get("state") or "").strip().lower()
+            if (
+                self._treat_status_idle_as_complete
+                and state == "idle"
+                and self.is_substantive_assistant_reply(accumulated)
+            ):
+                return self._deliverable_result(accumulated.strip(), "status.idle")
             return ChatEventResult(terminal=ChatEventTerminal.CONTINUE)
 
         if typ == "error":
@@ -138,7 +160,7 @@ class EventClassifier:
             message = (
                 err_obj.get("message")
                 if isinstance(err_obj.get("message"), str)
-                else ("daemon error")
+                else "daemon error"
             )
             return self._failed_result(DaemonError(code, message, err_obj.get("data")))
 
@@ -411,17 +433,32 @@ _CONTENT_KEYS = (
 
 
 def _extract_content_from_data(data: dict[str, Any]) -> tuple[str, bool]:
+    if _is_subscription_metadata_map(data):
+        return "", False
     for key in _CONTENT_KEYS:
         val = data.get(key)
         if isinstance(val, str) and val:
             return val, True
     nested = data.get("data")
     if isinstance(nested, dict):
+        if _is_subscription_metadata_map(nested):
+            return "", False
         for key in _CONTENT_KEYS:
             val = nested.get(key)
             if isinstance(val, str) and val:
                 return val, True
     return "", False
+
+
+def _is_subscription_metadata_map(data: dict[str, Any]) -> bool:
+    """True for loop subscription / seq acks without assistant text fields."""
+    if "loop_id" not in data or "latest_seq" not in data:
+        return False
+    for key in ("content", "text", "response", "output", "message", "report", "answer"):
+        val = data.get(key)
+        if isinstance(val, str) and val.strip():
+            return False
+    return True
 
 
 def _is_namespace_match(ns: str, data_type: str, pattern: str) -> bool:

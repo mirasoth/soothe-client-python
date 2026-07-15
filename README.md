@@ -49,6 +49,7 @@ Reusable application mechanics (product-agnostic):
 | `EventClassifier` / `extract_thinking_step` | Deliverable / thinking-step mapping |
 | `SSEBroadcaster` | Drop-on-full SSE-style fan-out |
 | `ConnectionPool` / `TurnRunner` | Pooled multi-session turn execution |
+| Idle / soft-complete / `compact_*` | Turn lifecycle + image compaction (optional Pillow) |
 | `SessionStore` | Persistence seam (Protocol) |
 
 ```python

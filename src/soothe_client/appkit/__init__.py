@@ -15,6 +15,11 @@ in the application (e.g. soothe-cli). Building blocks:
 
 from __future__ import annotations
 
+from soothe_client.appkit.attachments import (
+    CompactImageOptions,
+    compact_attachments,
+    compact_image_attachment,
+)
 from soothe_client.appkit.broadcaster import SSEBroadcaster, SSEEvent
 from soothe_client.appkit.chunk_filter import should_drop_stream_chunk_early
 from soothe_client.appkit.classifier import (
@@ -58,25 +63,35 @@ from soothe_client.appkit.turn import (
     run_turn_pipeline,
 )
 from soothe_client.appkit.turn_runner import (
+    STREAM_CLOSE_FAIL,
+    STREAM_CLOSE_SOFT_COMPLETE,
     Attachment,
+    ErrIdleTimeout,
     ErrQueryTimeout,
     InputOpts,
     OnComplete,
     OnError,
+    StreamClosePolicy,
+    TimeoutPolicy,
     TurnConfig,
     TurnRunner,
+    idle_timeout_for_turn,
     input_message_for_loop,
 )
 
 __all__ = [
     "DEFAULT_POST_IDLE_DRAIN_S",
     "DEFAULT_THINKING_STEP_EVENTS",
+    "STREAM_CLOSE_FAIL",
+    "STREAM_CLOSE_SOFT_COMPLETE",
     "Attachment",
     "BootstrapFunc",
     "ClientFactory",
+    "CompactImageOptions",
     "ConnectionPool",
     "DaemonSession",
     "EVENT_FINAL_REPORT",
+    "ErrIdleTimeout",
     "ErrPoolExhausted",
     "ErrQueryBusy",
     "ErrQueryTimeout",
@@ -100,16 +115,21 @@ __all__ = [
     "SessionEntry",
     "SessionMessage",
     "SessionStore",
+    "StreamClosePolicy",
+    "TimeoutPolicy",
     "TurnApplyBatcher",
     "TurnConfig",
     "TurnEventPipeline",
     "TurnEventStats",
     "TurnRunner",
     "WebSocketManagedClient",
+    "compact_attachments",
+    "compact_image_attachment",
     "default_bootstrap_func",
     "default_client_factory",
     "default_pool_config",
     "extract_thinking_step",
+    "idle_timeout_for_turn",
     "input_message_for_loop",
     "is_loop_scoped_event",
     "run_turn_pipeline",

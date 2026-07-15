@@ -233,7 +233,12 @@ async def test_turn_runner_deliverable_end_to_end() -> None:
     await tr.execute("s1", "what is 2+2", "user-1", "ws-1", None, opts)
 
     agen = it.__aiter__()
-    ev = await agen.__anext__()
+    ev = None
+    for _ in range(5):
+        ev = await agen.__anext__()
+        if ev.type == "complete":
+            break
+    assert ev is not None
     assert ev.type == "complete"
     msgs = store.messages("s1")
     assert msgs and msgs[0].role == "assistant"
