@@ -1,4 +1,4 @@
-"""Persistence seam for appkit (RFC-629 Layer 1)."""
+"""Persistence seam for appkit."""
 
 from __future__ import annotations
 

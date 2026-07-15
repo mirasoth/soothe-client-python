@@ -79,7 +79,7 @@ disallow_untyped_defs = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests/unit", "examples"]
+testpaths = ["tests/unit", "examples/appkit"]
 addopts = "--import-mode=importlib"
 markers = [
     "integration: live soothe-daemon tests (skipped when unreachable)",

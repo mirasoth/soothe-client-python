@@ -1,4 +1,4 @@
-"""SSE-style pub/sub fan-out for appkit (RFC-629 Layer 1).
+"""SSE-style pub/sub fan-out for appkit.
 
 Generic, string-keyed pub/sub for SSE-style event delivery. Slow consumers do
 not stall the broadcaster: each subscriber has a bounded queue and overflowing

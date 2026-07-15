@@ -1,11 +1,11 @@
-"""Turn runner for appkit (RFC-629 Layer 1).
+"""Turn runner for appkit.
 
 Executes one query turn end-to-end: acquire a pooled connection, enforce
 single-flight, send loop_input, consume the event stream, classify events,
 resolve the deliverable, persist the reply, and broadcast completion.
 
 Supports absolute query timeout, optional idle silence watchdog, soft-complete
-policies (IG-651), and optional attachment compaction before send.
+policies, and optional attachment compaction before send.
 """
 
 from __future__ import annotations

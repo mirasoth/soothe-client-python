@@ -1,15 +1,12 @@
-"""Reusable application-architecture layer over Layer 0 (RFC-629).
+"""Application helpers built on WebSocketClient.
 
-appkit is product-agnostic. Deliverable phases, persistence, and UI copy stay
-in the application (e.g. soothe-cli). Building blocks:
+Product-agnostic building blocks for agent UIs and backends:
 
-- ``unwrap_next`` / ``is_loop_scoped_event`` — protocol-1 stream helpers
-- ``QueryGate`` — single-flight cancel-before-context gating
-- ``TurnEventPipeline`` — reader / processor / applier concurrency
-- ``DaemonSession`` — dual-socket loop session + ``iter_turn_chunks``
-- ``EventClassifier`` / ``extract_thinking_step`` — deliverable terminal mapping
-- ``SSEBroadcaster`` — drop-on-full SSE-style fan-out
-- ``ConnectionPool`` / ``TurnRunner`` — pooled multi-session turn execution
+- ``DaemonSession`` — dual-socket loop session + streamed turns
+- ``ConnectionPool`` / ``TurnRunner`` — multi-session turn execution
+- ``QueryGate`` — one-in-flight query per session
+- ``EventClassifier`` / ``extract_thinking_step`` — stream → deliverable mapping
+- ``SSEBroadcaster`` — drop-on-full fan-out to subscribers
 - ``SessionStore`` — persistence seam (Protocol)
 """
 

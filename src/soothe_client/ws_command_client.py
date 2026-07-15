@@ -66,7 +66,7 @@ def _normalize_cron_show_result(result: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _perform_handshake(ws: Any, *, timeout: float) -> None:
-    """Complete protocol-1 ``connection_init`` / ``connection_ack`` (RFC-450 §8.2).
+    """Complete protocol-1 ``connection_init`` / ``connection_ack``.
 
     Args:
         ws: Connected WebSocket.
@@ -178,11 +178,10 @@ class WsCommandClient:
         """Send a protocol-1 request envelope and wait for the response.
 
         Builds a ``WireEnvelope`` with ``type='request'``, ``method=command_type``,
-        ``params=payload``, and a UUID4 correlation ``id`` (RFC-450 §5, IG-522
-        Phase 6). The envelope is serialized with :func:`encode_envelope` and the
-        reply is parsed with :func:`decode_envelope`. Responses are matched by
+        ``params=payload``, and a UUID4 correlation ``id`` (, ). The envelope is serialized with:func:`encode_envelope` and the
+        reply is parsed with:func:`decode_envelope`. Responses are matched by
         ``id``; ``response`` envelopes return their ``result`` and ``error``
-        envelopes raise :class:`RuntimeError` carrying the daemon's code/message.
+        envelopes raise:class:`RuntimeError` carrying the daemon's code/message.
 
         Args:
             command_type: RPC method name (e.g. ``"autopilot_status"``).
@@ -303,7 +302,7 @@ class WsCommandClient:
         """Unsubscribe from autopilot worker events."""
         return await self._send_command("autopilot_unsubscribe")
 
-    # RFC-228 canonical job commands (recommended)
+    # canonical job commands (recommended)
 
     async def job_create(
         self,
@@ -314,7 +313,7 @@ class WsCommandClient:
         max_iterations: int | None = None,
         guidance: str | None = None,
     ) -> dict[str, Any]:
-        """Create a new autopilot job (RFC-228 canonical method).
+        """Create a new autopilot job.
 
         Args:
             goal: Job goal text (required).
@@ -338,7 +337,7 @@ class WsCommandClient:
         return await self._send_command("job_create", payload)
 
     async def job_status(self, job_id: str) -> dict[str, Any]:
-        """Get job status with goal counts and workers (RFC-228 canonical method).
+        """Get job status with goal counts and workers.
 
         Args:
             job_id: Job identifier.
@@ -349,7 +348,7 @@ class WsCommandClient:
         return await self._send_command("job_status", {"job_id": job_id})
 
     async def job_pause(self, job_id: str) -> dict[str, Any]:
-        """Pause a running job (RFC-228 canonical method).
+        """Pause a running job.
 
         Args:
             job_id: Job identifier.
@@ -360,7 +359,7 @@ class WsCommandClient:
         return await self._send_command("job_pause", {"job_id": job_id})
 
     async def job_resume(self, job_id: str) -> dict[str, Any]:
-        """Resume a paused job (RFC-228 canonical method).
+        """Resume a paused job.
 
         Args:
             job_id: Job identifier.
@@ -371,7 +370,7 @@ class WsCommandClient:
         return await self._send_command("job_resume", {"job_id": job_id})
 
     async def job_cancel(self, job_id: str) -> dict[str, Any]:
-        """Cancel a job (RFC-228 canonical method).
+        """Cancel a job.
 
         Args:
             job_id: Job identifier.
@@ -382,7 +381,7 @@ class WsCommandClient:
         return await self._send_command("job_cancel", {"job_id": job_id})
 
     async def job_dag(self, job_id: str) -> dict[str, Any]:
-        """Get job DAG snapshot for visualization (RFC-228 canonical method).
+        """Get job DAG snapshot for visualization.
 
         Args:
             job_id: Job identifier.
@@ -395,7 +394,7 @@ class WsCommandClient:
     async def job_guidance(
         self, job_id: str, content: str, *, goal_id: str | None = None
     ) -> dict[str, Any]:
-        """Send guidance to a job or specific goal (RFC-228 canonical method).
+        """Send guidance to a job or specific goal.
 
         Args:
             job_id: Job identifier.
@@ -421,7 +420,7 @@ class WsCommandClient:
         return _normalize_cron_add_result(result)
 
     async def cron_list(self, *, status: str | None = None) -> dict[str, Any]:
-        """List scheduled jobs (RFC-229 canonical method).
+        """List scheduled jobs.
 
         Sends the ``cron_list`` method, which the daemon routes to
         ``_handle_cron_list``. The former ``cron_list_jobs`` method name is
@@ -543,7 +542,7 @@ class SyncWsCommandClient:
         max_iterations: int | None = None,
         guidance: str | None = None,
     ) -> dict[str, Any]:
-        """Create a new autopilot job (sync, RFC-228 canonical)."""
+        """Create a new autopilot job."""
         return self._run_async(
             self._client.job_create(
                 goal,
@@ -555,19 +554,19 @@ class SyncWsCommandClient:
         )
 
     def job_status(self, job_id: str) -> dict[str, Any]:
-        """Get job status with goal counts and workers (sync, RFC-228 canonical)."""
+        """Get job status with goal counts and workers."""
         return self._run_async(self._client.job_status(job_id))
 
     def job_resume(self, job_id: str) -> dict[str, Any]:
-        """Resume a paused autopilot job (sync, RFC-228 canonical)."""
+        """Resume a paused autopilot job."""
         return self._run_async(self._client.job_resume(job_id))
 
     def job_cancel(self, job_id: str) -> dict[str, Any]:
-        """Cancel an autopilot job (sync, RFC-228 canonical)."""
+        """Cancel an autopilot job."""
         return self._run_async(self._client.job_cancel(job_id))
 
     def job_dag(self, job_id: str) -> dict[str, Any]:
-        """Get job DAG snapshot for visualization (sync, RFC-228 canonical)."""
+        """Get job DAG snapshot for visualization."""
         return self._run_async(self._client.job_dag(job_id))
 
     def autopilot_subscribe(self) -> dict[str, Any]:

@@ -1,9 +1,8 @@
-"""Dual-socket daemon loop session with turn streaming (CLI-grade mechanics).
+"""Dual-socket daemon loop session with turn streaming.
 
 Owns a subscribed stream WebSocket plus an RPC sidecar so metadata calls do not
-starve ``loop_events``. ``iter_turn_chunks`` implements stale-idle guarding,
-post-idle drain, loop scoping, and connection-loss detection — behavior that
-originated in soothe-cli and is not yet mirrored in Go/TS TurnRunner.
+starve loop events. ``iter_turn_chunks`` handles idle timeout, post-idle drain,
+loop scoping, and connection-loss detection.
 """
 
 from __future__ import annotations

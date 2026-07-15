@@ -39,18 +39,14 @@ async def test_job_create_status_cancel(
 
 
 @pytest.mark.asyncio
-async def test_autopilot_status_optional(daemon_url: str, require_daemon: str) -> None:
-    """Autopilot status is not a protocol-1 request method on current daemons.
-
-    Skip when the daemon rejects the RPC; keep the client call covered when
-    a future daemon registers ``autopilot_status``.
-    """
+async def test_autopilot_status(daemon_url: str, require_daemon: str) -> None:
     client = WsCommandClient(ws_url=daemon_url)
     try:
         status = await client.autopilot_status()
     except RuntimeError as exc:
-        msg = str(exc)
-        if "Unknown method" in msg or "Invalid params" in msg or "-32602" in msg:
-            pytest.skip(f"daemon does not expose autopilot_status over request RPC: {exc}")
+        # Running processes may predate protocol-1 autopilot_* registration.
+        if "Unknown method" in str(exc) or "-32602" in str(exc):
+            pytest.skip(f"restart soothed for protocol-1 autopilot_* RPCs: {exc}")
         raise
     assert isinstance(status, dict)
+    assert "running" in status or "state" in status or "dreaming" in status

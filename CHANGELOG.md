@@ -10,9 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Live-daemon `tests/integration/` suite (connection, helpers, loops, DaemonSession, pool/TurnRunner, jobs)
 - `make test-integration` with skip-if-daemon-down / `SOOTHE_INTEGRATION=1` force-fail
+- Runnable agent examples under `examples/01_*.py` … `06_*.py` (hello → pool → jobs)
 
 ### Changed
 - Require `soothe-sdk>=0.8.1` (canonical `soothe_sdk.wire` / `soothe_sdk.paths`)
+- Public package docs/README are end-user facing (no internal design-doc identifiers)
 
 ### Fixed
 - `WebSocketManagedClient.send_message` coerces flat appkit payloads (`loop_input`, `command_request`) to protocol-1 envelopes so TurnRunner works against envelope-only daemons

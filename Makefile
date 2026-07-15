@@ -89,8 +89,8 @@ test-unit: sync-dev ## Run unit tests
 	uv run pytest tests/unit -q
 	@echo "✓ Unit tests passed"
 
-test-examples: sync-dev ## Run appkit example tests
-	uv run pytest examples -q
+test-examples: sync-dev ## Run offline appkit example tests
+	uv run pytest examples/appkit -q
 	@echo "✓ Example tests passed"
 
 test-integration: sync-dev ## Live daemon tests (skip if soothed unreachable)

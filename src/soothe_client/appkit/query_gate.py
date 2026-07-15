@@ -1,4 +1,4 @@
-"""Single-flight query gate (RFC-629 Layer 1)."""
+"""Single-flight query gate."""
 
 from __future__ import annotations
 

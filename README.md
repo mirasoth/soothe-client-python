@@ -1,101 +1,53 @@
 # soothe-client-python
 
-WebSocket client in Python for [soothe-daemon](https://github.com/mirasoth/soothe).
-
-Peer of [`soothe-client-go`](https://github.com/mirasoth/soothe-client-go) and
-[`@mirasoth/soothe-client`](https://github.com/mirasoth/soothe-client-typescript).
-
-## Install
+Talk to a running **soothe-daemon** over WebSocket — send prompts, stream agent
+turns, run jobs.
 
 ```bash
 pip install soothe-client-python
-# optional image compaction:
+# optional: image compaction
 pip install 'soothe-client-python[image]'
-# or, in the soothe monorepo workspace:
-uv sync --all-packages
 ```
+
+Requires a local daemon (default `ws://127.0.0.1:8765`).
 
 ## Quick start
 
 ```python
-from soothe_client import WebSocketClient, bootstrap_loop_session, connect_websocket_with_retries
-
-client = WebSocketClient(url="ws://127.0.0.1:8765")
-await connect_websocket_with_retries(client)
-status = await bootstrap_loop_session(client, resume_loop_id=None)
-```
-
-## Layout (RFC-629)
-
-### Layer 0 (transport)
-
-| Module | Role |
-|--------|------|
-| `websocket` | Protocol-1 `WebSocketClient` |
-| `session` | Connect retries + loop bootstrap |
-| `helpers` | Daemon status / config / skills RPCs |
-| `ws_command_client` | Sync/async command helpers |
-| `protocol_params` | Client-side params models |
-| `intent_hints` | Intent-hint validation + `DEFAULT_DELIVERABLE_PHASES` |
-
-### Layer 1 (`soothe_client.appkit`)
-
-| Symbol | Role |
-|--------|------|
-| `DaemonSession` | Dual-socket loop session + `iter_turn_chunks` (CLI-grade) |
-| `QueryGate` | Single-flight cancel-before-context gating |
-| `EventClassifier` / `extract_thinking_step` | Deliverable / thinking-step mapping |
-| `SSEBroadcaster` | Drop-on-full SSE-style fan-out |
-| `ConnectionPool` / `TurnRunner` | Pooled multi-session turn execution |
-| Idle / soft-complete / `compact_*` | Turn lifecycle + optional Pillow compaction |
-| `SessionStore` | Persistence seam (Protocol) |
-
-```python
+import asyncio
 from soothe_client.appkit import DaemonSession
 
-session = DaemonSession("ws://127.0.0.1:8765")
-await session.connect()
-await session.send_turn("hello")
-async for namespace, mode, data in session.iter_turn_chunks():
-    ...
+async def main() -> None:
+    session = DaemonSession("ws://127.0.0.1:8765")
+    await session.connect()
+    await session.send_turn("Summarize this in one sentence: agents need tools.")
+    async for _namespace, mode, data in session.iter_turn_chunks():
+        if mode == "custom" and isinstance(data, dict):
+            text = data.get("content") or data.get("text")
+            if text:
+                print(text, end="", flush=True)
+    print()
+    await session.close()
+
+asyncio.run(main())
 ```
 
-Shared wire codec and path constants remain in **soothe-sdk**
-(`soothe_sdk.wire`, `soothe_sdk.paths`).
+More patterns: [`examples/`](examples/) (hello → streaming → multi-turn → pool → jobs).
 
-## Development
+## What you get
 
-From this repository (or the `client/python` submodule):
+| Need | Use |
+|------|-----|
+| One conversation, stream replies | `DaemonSession` |
+| Raw WebSocket / custom RPCs | `WebSocketClient` |
+| Many users / HTTP backend | `ConnectionPool` + `TurnRunner` |
+| Jobs / autopilot / cron | `WsCommandClient` |
+
+## Develop
 
 ```bash
-make sync-dev      # uv sync --extra dev --extra image
-make fix           # ruff --fix + format
-make check         # format-check + lint + unit tests
-make test          # unit + examples
-make verify        # format-check + lint + test + build
-make publish-dry   # inspect upload without publishing
-make publish       # PyPI (trusted publisher in CI, or UV_PUBLISH_TOKEN locally)
+make sync-dev
+make check          # lint + unit tests
+make test-examples  # offline appkit examples
+make test-integration  # needs soothed
 ```
-
-| Target | Purpose |
-|--------|---------|
-| `format` / `format-check` | Ruff format |
-| `lint` / `lint-fix` / `fix` | Ruff lint (+ auto-fix) |
-| `test` / `test-unit` / `test-examples` | Pytest (offline) |
-| `test-integration` | Live daemon suite (`tests/integration/`) |
-| `test-coverage` | Coverage HTML under `htmlcov/` |
-| `build` | `uv build` → `dist/` |
-| `verify` | Full pre-publish gate |
-| `version-patch` / `-minor` / `-major` | Bump `VERSION` |
-
-Examples live under `examples/appkit/` (run with `make test-examples`).
-
-Live-daemon coverage lives under `tests/integration/` (`make test-integration`;
-skipped automatically when `soothed` is unreachable).
-
-## Release
-
-GitHub Actions:
-
-- **CI** (`.github/workflows/ci.yml`) — format, lint, tests on Python 3.11–3.13
-- **Release** (`.github/workflows/release.yml`) — on GitHub Release publish, builds and uploads to PyPI via trusted publishing (skips if the `VERSION` already exists)

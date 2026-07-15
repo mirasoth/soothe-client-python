@@ -1,4 +1,4 @@
-"""Event classifier for appkit (RFC-629 Layer 1).
+"""Event classifier for appkit.
 
 Maps a stream of decoded daemon events into deliverable/streaming/terminal
 outcomes, keyed on (namespace, mode, phase). Product apps pass their own

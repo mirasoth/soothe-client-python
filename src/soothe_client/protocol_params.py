@@ -1,26 +1,6 @@
-"""Client-side protocol-1 params validation models (RFC-450 §6.5).
+"""Client-side params models for daemon RPCs.
 
-These Pydantic models mirror the daemon's PARAMS_REGISTRY and allow clients
-to validate params before sending, catching errors early and reducing
-daemon-side error round-trips.
-
-Design notes
-------------
-- All models allow extra fields (``model_config = {"extra": "allow"}``) for
-  forward compatibility.
-- Required string identifiers (``loop_id``, ``skill``, ``cmd``, ``content``)
-  use ``min_length=1`` to catch empty strings client-side.
-- Optional fields are permissive — the daemon is the authority on domain
-  semantics (e.g. whether ``autonomous`` is honoured for a specific method).
-
-Public API
-----------
-Each model is named after the method it validates (e.g. ``LoopGetParams``,
-``LoopInputParams``, ``SubscribeParams``). Use with the ``WebSocketClient``
-request/notify/subscribe methods to validate params before sending:
-
-    params = LoopInputParams(loop_id="abc123", content="Hello")
-    await client.notify("loop_input", params.model_dump())
+Validate request payloads before send to catch empty ids and bad shapes early.
 """
 
 from __future__ import annotations
@@ -47,6 +27,16 @@ __all__ = [
     # Subscription params
     "SubscribeParams",
     "AutopilotSubscribeParams",
+    "AutopilotStatusParams",
+    "AutopilotSubmitParams",
+    "AutopilotListGoalsParams",
+    "AutopilotGetGoalParams",
+    "AutopilotCancelGoalParams",
+    "AutopilotWakeParams",
+    "AutopilotDreamParams",
+    "AutopilotResumeParams",
+    "AutopilotListJobsParams",
+    "AutopilotGetJobParams",
     # Job RPC params
     "JobCreateParams",
     "JobStatusParams",
@@ -98,12 +88,12 @@ class EmptyParams(ParamsBase):
 
 
 # ---------------------------------------------------------------------------
-# Loop RPC params (RFC-450 §9.2)
+# Loop RPC params
 # ---------------------------------------------------------------------------
 
 
 class LoopGetParams(ParamsBase):
-    """Params for ``method=loop_get`` (RFC-450 §9.2).
+    """Params for ``method=loop_get``.
 
     Attributes:
         loop_id: Loop identifier (required, non-empty).
@@ -117,7 +107,7 @@ class LoopGetParams(ParamsBase):
 
 
 class LoopListParams(ParamsBase):
-    """Params for ``method=loop_list`` (RFC-450 §9.2).
+    """Params for ``method=loop_list``.
 
     Attributes:
         status: Optional status filter.
@@ -129,7 +119,7 @@ class LoopListParams(ParamsBase):
 
 
 class LoopTreeParams(ParamsBase):
-    """Params for ``method=loop_tree`` (RFC-450 §9.2).
+    """Params for ``method=loop_tree``.
 
     Attributes:
         loop_id: Loop identifier (required).
@@ -139,7 +129,7 @@ class LoopTreeParams(ParamsBase):
 
 
 class LoopPruneParams(ParamsBase):
-    """Params for ``method=loop_prune`` (RFC-450 §9.2).
+    """Params for ``method=loop_prune``.
 
     Attributes:
         loop_id: Loop identifier (required).
@@ -151,7 +141,7 @@ class LoopPruneParams(ParamsBase):
 
 
 class LoopDeleteParams(ParamsBase):
-    """Params for ``method=loop_delete`` (RFC-450 §9.2).
+    """Params for ``method=loop_delete``.
 
     Attributes:
         loop_id: Loop identifier (required).
@@ -161,7 +151,7 @@ class LoopDeleteParams(ParamsBase):
 
 
 class LoopNewParams(ParamsBase):
-    """Params for ``method=loop_new`` (RFC-450 §9.2).
+    """Params for ``method=loop_new``.
 
     Attributes:
         workspace: Optional client workspace path.
@@ -177,7 +167,7 @@ class LoopNewParams(ParamsBase):
 
 
 class LoopReattachParams(ParamsBase):
-    """Params for ``method=loop_reattach`` (RFC-450 §9.2).
+    """Params for ``method=loop_reattach``.
 
     Attributes:
         loop_id: Loop to reattach (required).
@@ -187,7 +177,7 @@ class LoopReattachParams(ParamsBase):
 
 
 class LoopDetachParams(ParamsBase):
-    """Params for ``method=loop_detach`` (request mode, RFC-450 §9.2).
+    """Params for ``method=loop_detach``.
 
     Attributes:
         loop_id: Loop to detach from (required).
@@ -197,7 +187,7 @@ class LoopDetachParams(ParamsBase):
 
 
 class LoopInputParams(ParamsBase):
-    """Params for ``method=loop_input`` (request or notification, RFC-450 §9.2).
+    """Params for ``method=loop_input``.
 
     Attributes:
         loop_id: Loop identifier (required).
@@ -213,7 +203,7 @@ class LoopInputParams(ParamsBase):
         response_schema: Structured output schema.
         response_schema_name: Schema name for logging.
         response_schema_strict: Enable strict schema validation.
-        clarification_mode: RFC-622 clarification relay mode.
+        clarification_mode: clarification relay mode.
         clarification_answer: Mark as answer to pending clarification.
         clarification_answers: Per-question answers for multi-question clarification.
     """
@@ -237,7 +227,7 @@ class LoopInputParams(ParamsBase):
 
 
 class LoopMessagesParams(ParamsBase):
-    """Params for ``method=loop_messages`` (RFC-450 §9.2).
+    """Params for ``method=loop_messages``.
 
     Attributes:
         loop_id: Loop identifier (required).
@@ -253,7 +243,7 @@ class LoopMessagesParams(ParamsBase):
 
 
 class LoopStateGetParams(ParamsBase):
-    """Params for ``method=loop_state_get`` (RFC-450 §9.2).
+    """Params for ``method=loop_state_get``.
 
     Attributes:
         loop_id: Loop identifier (required).
@@ -265,7 +255,7 @@ class LoopStateGetParams(ParamsBase):
 
 
 class LoopStateUpdateParams(ParamsBase):
-    """Params for ``method=loop_state_update`` (RFC-450 §9.2).
+    """Params for ``method=loop_state_update``.
 
     Attributes:
         loop_id: Loop identifier (required).
@@ -279,7 +269,7 @@ class LoopStateUpdateParams(ParamsBase):
 
 
 class LoopCardsFetchParams(ParamsBase):
-    """Params for ``method=loop_cards_fetch`` (RFC-450 §9.2).
+    """Params for ``method=loop_cards_fetch``.
 
     Attributes:
         loop_id: Loop identifier (required).
@@ -291,7 +281,7 @@ class LoopCardsFetchParams(ParamsBase):
 
 
 class LoopHistoryFetchParams(ParamsBase):
-    """Params for ``method=loop_history_fetch`` (RFC-631).
+    """Params for ``method=loop_history_fetch``.
 
     Attributes:
         loop_id: Loop identifier (required).
@@ -301,12 +291,12 @@ class LoopHistoryFetchParams(ParamsBase):
 
 
 # ---------------------------------------------------------------------------
-# Subscription params (RFC-450 §9.2)
+# Subscription params
 # ---------------------------------------------------------------------------
 
 
 class SubscribeParams(ParamsBase):
-    """Params for ``method=loop_events`` subscription (RFC-450 §9.2).
+    """Params for ``method=loop_events`` subscription.
 
     Attributes:
         loop_id: Loop to subscribe to (required).
@@ -320,7 +310,7 @@ class SubscribeParams(ParamsBase):
 
 
 class AutopilotSubscribeParams(ParamsBase):
-    """Params for ``method=autopilot_events`` subscription (RFC-450 §9.2).
+    """Params for ``method=autopilot_events`` subscription.
 
     Attributes:
         job_id: Optional job filter.
@@ -331,13 +321,87 @@ class AutopilotSubscribeParams(ParamsBase):
     filters: dict[str, Any] | None = None
 
 
+class AutopilotStatusParams(EmptyParams):
+    """Params for ``method=autopilot_status`` — no required fields."""
+
+
+class AutopilotSubmitParams(ParamsBase):
+    """Params for ``method=autopilot_submit``.
+
+    Attributes:
+        description: Task description (required).
+        priority: Task priority (default 50).
+        workspace: Optional workspace path.
+    """
+
+    description: str = Field(..., min_length=1)
+    priority: int = 50
+    workspace: str | None = None
+
+
+class AutopilotListGoalsParams(EmptyParams):
+    """Params for ``method=autopilot_list_goals`` — no required fields."""
+
+
+class AutopilotGetGoalParams(ParamsBase):
+    """Params for ``method=autopilot_get_goal``.
+
+    Attributes:
+        goal_id: Goal identifier (required).
+    """
+
+    goal_id: str = Field(..., min_length=1)
+
+
+class AutopilotCancelGoalParams(ParamsBase):
+    """Params for ``method=autopilot_cancel_goal``.
+
+    Attributes:
+        goal_id: Goal to cancel (required).
+    """
+
+    goal_id: str = Field(..., min_length=1)
+
+
+class AutopilotWakeParams(EmptyParams):
+    """Params for ``method=autopilot_wake`` — no required fields."""
+
+
+class AutopilotDreamParams(EmptyParams):
+    """Params for ``method=autopilot_dream`` — no required fields."""
+
+
+class AutopilotResumeParams(ParamsBase):
+    """Params for ``method=autopilot_resume``.
+
+    Attributes:
+        goal_id: Goal to resume (required).
+    """
+
+    goal_id: str = Field(..., min_length=1)
+
+
+class AutopilotListJobsParams(EmptyParams):
+    """Params for ``method=autopilot_list_jobs`` — no required fields."""
+
+
+class AutopilotGetJobParams(ParamsBase):
+    """Params for ``method=autopilot_get_job``.
+
+    Attributes:
+        job_id: Root goal (job) identifier (required).
+    """
+
+    job_id: str = Field(..., min_length=1)
+
+
 # ---------------------------------------------------------------------------
-# Job RPC params (RFC-450 §9.2)
+# Job RPC params
 # ---------------------------------------------------------------------------
 
 
 class JobCreateParams(ParamsBase):
-    """Params for ``method=job_create`` (RFC-450 §9.2).
+    """Params for ``method=job_create``.
 
     Attributes:
         goal: Root goal description (required).
@@ -359,7 +423,7 @@ class JobCreateParams(ParamsBase):
 
 
 class JobStatusParams(ParamsBase):
-    """Params for ``method=job_status`` (RFC-450 §9.2).
+    """Params for ``method=job_status``.
 
     Attributes:
         job_id: Job identifier (required).
@@ -369,7 +433,7 @@ class JobStatusParams(ParamsBase):
 
 
 class JobPauseParams(ParamsBase):
-    """Params for ``method=job_pause`` (RFC-450 §9.2).
+    """Params for ``method=job_pause``.
 
     Attributes:
         job_id: Job to pause (required).
@@ -379,7 +443,7 @@ class JobPauseParams(ParamsBase):
 
 
 class JobResumeParams(ParamsBase):
-    """Params for ``method=job_resume`` (RFC-450 §9.2).
+    """Params for ``method=job_resume``.
 
     Attributes:
         job_id: Job to resume (required).
@@ -389,7 +453,7 @@ class JobResumeParams(ParamsBase):
 
 
 class JobCancelParams(ParamsBase):
-    """Params for ``method=job_cancel`` (RFC-450 §9.2).
+    """Params for ``method=job_cancel``.
 
     Attributes:
         job_id: Job to cancel (required).
@@ -399,7 +463,7 @@ class JobCancelParams(ParamsBase):
 
 
 class JobDagParams(ParamsBase):
-    """Params for ``method=job_dag`` (RFC-450 §9.2).
+    """Params for ``method=job_dag``.
 
     Attributes:
         job_id: Job identifier (required).
@@ -409,7 +473,7 @@ class JobDagParams(ParamsBase):
 
 
 class JobGuidanceParams(ParamsBase):
-    """Params for ``method=job_guidance`` (RFC-450 §9.2).
+    """Params for ``method=job_guidance``.
 
     Attributes:
         job_id: Target job (required).
@@ -423,12 +487,12 @@ class JobGuidanceParams(ParamsBase):
 
 
 # ---------------------------------------------------------------------------
-# Cron RPC params (RFC-229)
+# Cron RPC params
 # ---------------------------------------------------------------------------
 
 
 class CronAddParams(ParamsBase):
-    """Params for ``method=cron_add`` (RFC-229).
+    """Params for ``method=cron_add``.
 
     Attributes:
         text: Natural language scheduling request (required).
@@ -440,7 +504,7 @@ class CronAddParams(ParamsBase):
 
 
 class CronListParams(ParamsBase):
-    """Params for ``method=cron_list`` (RFC-229).
+    """Params for ``method=cron_list``.
 
     Attributes:
         status: Optional status filter.
@@ -450,7 +514,7 @@ class CronListParams(ParamsBase):
 
 
 class CronShowParams(ParamsBase):
-    """Params for ``method=cron_show`` (RFC-229).
+    """Params for ``method=cron_show``.
 
     Attributes:
         job_id: Cron job identifier (required).
@@ -460,7 +524,7 @@ class CronShowParams(ParamsBase):
 
 
 class CronCancelParams(ParamsBase):
-    """Params for ``method=cron_cancel`` (RFC-229).
+    """Params for ``method=cron_cancel``.
 
     Attributes:
         job_id: Cron job to cancel (required).
@@ -470,7 +534,7 @@ class CronCancelParams(ParamsBase):
 
 
 # ---------------------------------------------------------------------------
-# Daemon & config params (RFC-450 §9.2)
+# Daemon & config params
 # ---------------------------------------------------------------------------
 
 
@@ -483,7 +547,7 @@ class DaemonShutdownParams(EmptyParams):
 
 
 class ConfigGetParams(ParamsBase):
-    """Params for ``method=config_get`` (RFC-450 §9.2).
+    """Params for ``method=config_get``.
 
     Attributes:
         section: Config section to fetch.
@@ -497,7 +561,7 @@ class ConfigReloadParams(EmptyParams):
 
 
 # ---------------------------------------------------------------------------
-# Skills & models params (RFC-450 §9.2)
+# Skills & models params
 # ---------------------------------------------------------------------------
 
 
@@ -510,12 +574,12 @@ class ModelsListParams(EmptyParams):
 
 
 class InvokeSkillParams(ParamsBase):
-    """Params for ``method=invoke_skill`` (RFC-450 §9.2).
+    """Params for ``method=invoke_skill``.
 
     Attributes:
         skill: Skill name (required).
         args: Skill arguments.
-        clarification_mode: RFC-622 clarification relay mode.
+        clarification_mode: clarification relay mode.
     """
 
     skill: str = Field(..., min_length=1)
@@ -528,12 +592,12 @@ class McpStatusParams(EmptyParams):
 
 
 # ---------------------------------------------------------------------------
-# Auth params (RFC-450 §9.2)
+# Auth params
 # ---------------------------------------------------------------------------
 
 
 class AuthParams(ParamsBase):
-    """Params for ``method=auth`` (RFC-450 §9.2).
+    """Params for ``method=auth``.
 
     Attributes:
         access_key: Access key credential.
@@ -545,7 +609,7 @@ class AuthParams(ParamsBase):
 
 
 class AuthRefreshParams(ParamsBase):
-    """Params for ``method=auth_refresh`` (RFC-450 §9.2).
+    """Params for ``method=auth_refresh``.
 
     Attributes:
         refresh_token: Token to refresh.
@@ -555,12 +619,12 @@ class AuthRefreshParams(ParamsBase):
 
 
 # ---------------------------------------------------------------------------
-# Command params (RFC-450 §9.4)
+# Command params
 # ---------------------------------------------------------------------------
 
 
 class SlashCommandParams(ParamsBase):
-    """Params for ``method=slash_command`` notification (RFC-450 §9.4).
+    """Params for ``method=slash_command`` notification.
 
     Attributes:
         cmd: Slash command string (e.g. ``/exit``, ``/cancel``).
@@ -570,7 +634,7 @@ class SlashCommandParams(ParamsBase):
 
 
 class RpcCommandParams(ParamsBase):
-    """Params for ``method=rpc_command`` request (RFC-450 §9.4).
+    """Params for ``method=rpc_command`` request.
 
     Attributes:
         command: RPC command name.
@@ -582,7 +646,7 @@ class RpcCommandParams(ParamsBase):
 
 
 # ---------------------------------------------------------------------------
-# Connection params (RFC-450 §8.2)
+# Connection params
 # ---------------------------------------------------------------------------
 
 

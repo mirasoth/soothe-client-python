@@ -1,4 +1,4 @@
-"""WebSocket client for daemon connections (RFC-0013)."""
+"""WebSocket client for daemon connections."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ from soothe_client.intent_hints import validate_loop_input_intent_hint
 
 logger = logging.getLogger(__name__)
 
-# IG-535 Optimization 1: Priority-aware drop policy for inbound queue.
+# Optimization 1: Priority-aware drop policy for inbound queue.
 # Lower values = keep, higher values = drop candidate.
 _DROP_PRIORITY_CRITICAL = 0  # Never drop: terminal frames, goal_completion, status, errors
 _DROP_PRIORITY_HIGH = 1  # Prefer keep: tool call updates, step events
@@ -47,7 +47,7 @@ def _event_messages_wire_terminal(data: Any) -> bool:
 def _inbound_frame_drop_priority(event: dict[str, Any] | None) -> int:
     """Return priority for drop decision (lower = keep, higher = drop candidate).
 
-    IG-535: Ensures terminal frames and goal_completion are never dropped
+    : Ensures terminal frames and goal_completion are never dropped
     even when inbound queue is full.
 
     Args:
@@ -61,13 +61,13 @@ def _inbound_frame_drop_priority(event: dict[str, Any] | None) -> int:
 
     event_type = event.get("type", "")
 
-    # Batched transport frames bundle user-visible events — prefer keep (IG-546).
+    # Batched transport frames bundle user-visible events — prefer keep.
     if event_type == "event_batch":
         return _DROP_PRIORITY_HIGH
     if event_type == "tool_call_updates_batch":
         return _DROP_PRIORITY_HIGH
 
-    # Unwrap protocol-1 next envelope (RFC-450 §9.3)
+    # Unwrap protocol-1 next envelope
     if event_type == "next":
         payload = event.get("payload")
         if isinstance(payload, dict):
@@ -206,12 +206,12 @@ def _inbound_needs_delivery_ack(event: dict[str, Any]) -> bool:
 # when the daemon streams larger JSON events to the client.
 _DEFAULT_MAX_FRAME_SIZE = 10 * 1024 * 1024
 
-# RFC-450: clients must wait (bounded) while the daemon is still starting; it does not
+#: clients must wait (bounded) while the daemon is still starting; it does not
 # necessarily push another ``daemon_ready`` when transitioning to ready, so we re-request.
 _TRANSITIONAL_DAEMON_READY_STATES = frozenset({"starting", "warming"})
 _DAEMON_READY_POLL_INTERVAL_S = 0.05
 
-# Client version reported in the connection_init handshake (RFC-450 §8.2).
+# Client version reported in the connection_init handshake.
 try:
     from soothe_sdk import __version__ as client_version  # noqa: N812
 except Exception:  # pragma: no cover
@@ -255,20 +255,20 @@ class WebSocketClient:
         self._pending_events: deque[dict[str, Any]] = deque()
         # Background reader drains the socket so daemon sends are not blocked by a
         # stalled consumer (e.g. heavy Textual UI work on the same event loop).
-        # IG-535: Increased from 10_000 to 20_000 for 32 concurrent loops with dense streaming
+        #: Increased from 10_000 to 20_000 for 32 concurrent loops with dense streaming
         self._inbound_maxsize = 20_000
         self._inbound_queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue(
             maxsize=self._inbound_maxsize
         )
         self._inbound_dropped = 0
-        # IG-534: Optional callback for stream degradation events
+        #: Optional callback for stream degradation events
         self._on_stream_degraded: Callable[[int, str], None] | None = None
         self._reader_task: asyncio.Task[None] | None = None
         # Coalesce high-frequency daemon_status polls on a long-lived connection.
         self._daemon_status_cache: tuple[float, dict[str, Any]] | None = None
         self._daemon_status_lock = asyncio.Lock()
         self._daemon_status_inflight: asyncio.Task[dict[str, Any]] | None = None
-        # Protocol-1 handshake state (RFC-450 §8.2)
+        # Protocol-1 handshake state
         self._negotiated_capabilities: set[str] = set()
         self._protocol_version: str | None = None
         self._handshake_complete: bool = False
@@ -276,10 +276,10 @@ class WebSocketClient:
         self._heartbeat_timeout_ms: int = 10000
         self._heartbeat_task: asyncio.Task[None] | None = None
         self._last_pong_monotonic: float = 0.0
-        # IG-556 P1.3: delivery ack sequence per loop for daemon drain gating.
+        # P1.3: delivery ack sequence per loop for daemon drain gating.
         self._delivery_recv_seq: dict[str, int] = {}
         self._delivery_acked_seq: dict[str, int] = {}
-        # Mid-session drop signal (RFC-450 §8.3 / RFC-629 Layer 0).
+        # Mid-session drop signal.
         self._disconn_event = asyncio.Event()
         self._disconn_cause: DisconnectCause | None = None
         self._disconn_fired = False
@@ -344,7 +344,7 @@ class WebSocketClient:
                 if event is None:
                     await self._enqueue_inbound(None)
                     break
-                # Intercept heartbeat frames (RFC-450 §8.3): respond to ping
+                # Intercept heartbeat frames: respond to ping
                 # with pong and swallow pong (liveness tracked by heartbeat loop).
                 etype = event.get("type")
                 if etype == "ping":
@@ -370,7 +370,7 @@ class WebSocketClient:
                 self._signal_disconnect(DisconnectCause.UNCLEAN)
 
     async def _respond_pong(self) -> None:
-        """Respond to a daemon ``ping`` with ``pong`` (RFC-450 §8.3)."""
+        """Respond to a daemon ``ping`` with ``pong``."""
         if not self._ws or not self._connected:
             return
         try:
@@ -397,7 +397,7 @@ class WebSocketClient:
     async def _put_inbound_queue(self, event: dict[str, Any] | None) -> None:
         """Put event into inbound queue with priority-aware drop policy.
 
-        IG-535: When queue is full, find and drop a NORMAL priority frame
+        : When queue is full, find and drop a NORMAL priority frame
         (streaming text/updates) instead of blindly dropping oldest, which
         could lose terminal frames (goal_completion, status:idle).
         """
@@ -439,7 +439,7 @@ class WebSocketClient:
             if drop_candidate is not None and drop_priority >= _DROP_PRIORITY_NORMAL:
                 # Successfully found and dropped a NORMAL frame
                 self._inbound_dropped += 1
-                # IG-534: Emit stream_degraded callback on first drop
+                #: Emit stream_degraded callback on first drop
                 if self._on_stream_degraded and self._inbound_dropped == 1:
                     try:
                         self._on_stream_degraded(1, "inbound_queue_overflow")
@@ -661,7 +661,7 @@ class WebSocketClient:
         return self._inbound_dropped
 
     def set_stream_degraded_callback(self, callback: Callable[[int, str], None] | None) -> None:
-        """Set callback for stream degradation notifications (IG-534).
+        """Set callback for stream degradation notifications.
 
         Args:
             callback: Function called with (dropped_count, reason) when frames
@@ -683,13 +683,13 @@ class WebSocketClient:
         return self._ws is not None and self._ws.state == State.OPEN
 
     # -----------------------------------------------------------------------
-    # Protocol-1 client API (RFC-450 §5/§9, IG-522 Phase 5)
+    # Protocol-1 client API
     # -----------------------------------------------------------------------
 
     def _next_request_id(self) -> str:
-        """Generate a unique request correlation ID (RFC-450 §5.2).
+        """Generate a unique request correlation ID.
 
-        Uses :func:`uuid.uuid4` to produce a globally unique hex string. The
+        Uses:func:`uuid.uuid4` to produce a globally unique hex string. The
         same ID space serves ``request`` and ``subscribe`` operations.
 
         Returns:
@@ -705,7 +705,7 @@ class WebSocketClient:
         timeout: float = 5.0,
         proto: str = "1",
     ) -> dict[str, Any]:
-        """Send a blocking RPC request and await the matching response (RFC-450 §5/§9).
+        """Send a blocking RPC request and await the matching response.
 
         Constructs a ``WireEnvelope`` with ``type='request'``, sends it over
         the transport, and waits for a ``response`` or ``error`` message
@@ -780,7 +780,7 @@ class WebSocketClient:
         *,
         proto: str = "1",
     ) -> None:
-        """Send a fire-and-forget notification (RFC-450 §5/§9).
+        """Send a fire-and-forget notification.
 
         Notifications carry no ``id`` and the daemon does not reply. Use for
         operations like ``loop_input`` (fire-and-forget) and ``disconnect``.
@@ -811,7 +811,7 @@ class WebSocketClient:
         timeout: float = 5.0,
         proto: str = "1",
     ) -> str:
-        """Start a subscription stream (RFC-450 §5/§9).
+        """Start a subscription stream.
 
         Sends a ``subscribe`` envelope with a generated correlation ``id``.
         The daemon delivers stream events as ``next`` messages carrying the
@@ -828,7 +828,7 @@ class WebSocketClient:
             proto: Protocol version string (default ``"1"``).
 
         Returns:
-            The subscription ``id`` for later correlation and ``unsubscribe()``.
+            The subscription ``id`` for later correlation and ``unsubscribe``.
 
         Raises:
             ConnectionError: If not connected.
@@ -886,14 +886,14 @@ class WebSocketClient:
         *,
         proto: str = "1",
     ) -> None:
-        """Cancel an active subscription (RFC-450 §5/§9).
+        """Cancel an active subscription.
 
         Sends an ``unsubscribe`` envelope carrying the subscription ``id``.
         The daemon stops delivering ``next`` events for that ``id`` and may
         send a final ``complete``.
 
         Args:
-            subscription_id: The ``id`` returned by :meth:`subscribe`.
+            subscription_id: The ``id`` returned by:meth:`subscribe`.
             proto: Protocol version string (default ``"1"``).
 
         Raises:
@@ -909,10 +909,10 @@ class WebSocketClient:
         await self.send(envelope.to_wire_dict())
 
     async def next(self) -> dict[str, Any] | None:
-        """Read the next protocol-1 stream event from the daemon (RFC-450 §5/§9).
+        """Read the next protocol-1 stream event from the daemon.
 
         This is the primary stream-event reader for protocol-1 messages. It
-        replaces :meth:`read_event` for protocol-1 consumers. For ``next``
+        replaces:meth:`read_event` for protocol-1 consumers. For ``next``
         messages (subscription stream events) the ``payload`` is returned.
         For ``complete`` and ``error`` messages the full envelope is returned
         so the caller can inspect the ``id`` and error details. For all other
@@ -987,12 +987,11 @@ class WebSocketClient:
 
         Raises:
             ValueError: When ``intent_hint`` is a removed legacy value.
-            clarification_mode: RFC-622 clarification relay mode for this turn
+            clarification_mode: clarification relay mode for this turn
                 (``"auto"`` / ``"manual"``). ``None`` lets the daemon fall back
                 to its configured default.
             clarification_answer: When True, the daemon treats this input as the
-                answer to the loop's currently pending clarification interrupt
-                (RFC-622) and resumes the graph via ``Command(resume=...)``
+                answer to the loop's currently pending clarification interrupt and resumes the graph via ``Command(resume=...)``
                 instead of starting a new turn. Hint only — daemon verifies via
                 the loop's persisted state and falls back to a normal turn when
                 no clarification is pending.
@@ -1247,11 +1246,11 @@ class WebSocketClient:
             raise StaleLoopError(lid, exc) from exc
 
     async def list_skills(self, *, timeout: float = 15.0) -> dict[str, Any]:
-        """Request wire-safe skill metadata from the daemon (RFC-400 ``skills_list``)."""
+        """Request wire-safe skill metadata from the daemon."""
         return await self.request("skills_list", {}, timeout=timeout)
 
     async def list_models(self, *, timeout: float = 15.0) -> dict[str, Any]:
-        """Request model catalog rows from the daemon host ``SootheConfig`` (RFC-400 ``models_list``)."""
+        """Request model catalog rows from the daemon host ``SootheConfig``."""
         return await self.request("models_list", {}, timeout=timeout)
 
     async def get_mcp_status(self, *, timeout: float = 15.0) -> dict[str, Any]:
@@ -1266,13 +1265,13 @@ class WebSocketClient:
         timeout: float = 120.0,
         clarification_mode: str | None = None,
     ) -> dict[str, Any]:
-        """Resolve a skill on the daemon host and receive echo before streaming (RFC-400).
+        """Resolve a skill on the daemon host and receive echo before streaming.
 
         Args:
             skill: Skill identifier (e.g. ``"my-plugin:my-skill"``).
             args: Free-form argument string appended after the skill name.
             timeout: RPC timeout in seconds.
-            clarification_mode: RFC-622 clarification relay mode for the
+            clarification_mode: clarification relay mode for the
                 synthetic turn the daemon will enqueue (``"auto"`` /
                 ``"manual"``). ``None`` lets the daemon fall back to its
                 configured default. Without this, slash-skill turns ignore
@@ -1339,7 +1338,7 @@ class WebSocketClient:
         return dict(result)
 
     async def request_connection_init(self) -> None:
-        """Send ``connection_init`` to the daemon (RFC-450 §8.2).
+        """Send ``connection_init`` to the daemon.
 
         This is the first message the client sends after the WebSocket upgrade.
         The daemon responds with ``connection_ack`` containing readiness state,
@@ -1347,7 +1346,7 @@ class WebSocketClient:
 
         This method is safe to call even if the connection may be closed.
         If the connection is closed, this method silently succeeds —
-        ``wait_for_connection_ack()`` will either find a pending ack or timeout.
+        ``wait_for_connection_ack`` will either find a pending ack or timeout.
         """
         from soothe_sdk.wire.codec import ConnectionInitEnvelope, ConnectionInitParams
 
@@ -1369,7 +1368,7 @@ class WebSocketClient:
             )
 
     async def wait_for_connection_ack(self, ack_timeout_s: float = 10.0) -> dict[str, Any]:
-        """Wait for ``connection_ack`` and require ready state (RFC-450 §8.2).
+        """Wait for ``connection_ack`` and require ready state.
 
         Args:
             ack_timeout_s: Maximum seconds to wait for the ack.
@@ -1436,7 +1435,7 @@ class WebSocketClient:
                 raise RuntimeError(f"Daemon state is {state}")
 
     def _start_heartbeat(self) -> None:
-        """Start the client-side heartbeat ping sender (RFC-450 §8.3).
+        """Start the client-side heartbeat ping sender.
 
         Sends ``ping`` frames at the negotiated interval. If no ``pong`` is
         received within the timeout window, the connection is considered dead.
@@ -1454,7 +1453,7 @@ class WebSocketClient:
         )
 
     async def _heartbeat_loop(self, interval_s: float) -> None:
-        """Send periodic ping frames and detect dead connections (RFC-450 §8.3).
+        """Send periodic ping frames and detect dead connections.
 
         Args:
             interval_s: Ping interval in seconds.
@@ -1546,11 +1545,11 @@ class WebSocketClient:
 
     # Handshake / RPC responses that must not count as turn progress (TUI stall detection).
     # ``card.replay_*`` / ``card.created`` are emitted by the daemon during
-    # ``loop_subscribe`` for non-TUI clients (RFC-413). The TUI consumes its
+    # ``loop_subscribe`` for non-TUI clients. The TUI consumes its
     # cards via the synchronous ``loop_cards_fetch`` RPC so these frames are
     # peeled silently here. Under protocol-1, RPC responses arrive as
     # ``type:"response"`` correlated by ``id`` (peeled by the reader loop), so
-    # the legacy ``*_response`` type entries are gone. Under protocol-1 (RFC-450
+    # the legacy ``*_response`` type entries are gone. Under protocol-1 (
     # §9.3) card replay frames arrive wrapped in ``next`` envelopes with
     # ``payload.mode`` set to the originating frame type; the peel logic below
     # inspects both the raw ``type`` and the wrapped ``payload.mode``.
@@ -1619,7 +1618,7 @@ class WebSocketClient:
 
 __all__ = [
     "WebSocketClient",
-    "_inbound_frame_drop_priority",  # IG-535: Exported for testing
+    "_inbound_frame_drop_priority",  #: Exported for testing
     "_DROP_PRIORITY_CRITICAL",
     "_DROP_PRIORITY_HIGH",
     "_DROP_PRIORITY_NORMAL",

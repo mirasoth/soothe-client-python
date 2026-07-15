@@ -1,4 +1,4 @@
-"""Thinking-step extraction for appkit (RFC-629 Layer 1).
+"""Thinking-step extraction for appkit.
 
 Maps an allowlisted progress event to one structured UI line. Free-form
 streams (tokens, reports, reasoning) are excluded. Ported from Go/TS appkit.

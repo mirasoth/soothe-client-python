@@ -1,13 +1,7 @@
-"""Wire-safe protocol schemas for WebSocket communication.
+"""Wire-safe schemas shared with CLI/daemon over WebSocket.
 
-These schemas are used in daemon-CLI communication via WebSocket protocol.
-They're defined in SDK so both daemon and CLI can use them without daemon
-runtime dependency in CLI.
-
-This module is part of Phase 1 of IG-174: CLI import violations fix.
-
-Note: These are simplified wire-safe versions. Full protocol implementations
-are in soothe.protocols.planner (daemon-side).
+Simplified plan/tool structures for clients that render agent progress without
+importing daemon internals.
 """
 
 from pydantic import BaseModel, Field

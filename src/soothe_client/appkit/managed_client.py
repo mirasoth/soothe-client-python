@@ -1,7 +1,7 @@
-"""ManagedClient seam for appkit ConnectionPool / TurnRunner (RFC-629).
+"""ManagedClient adapter used by ConnectionPool and TurnRunner.
 
-The concrete ``WebSocketClient`` satisfies it via ``WebSocketManagedClient``;
-tests supply fakes.
+Wraps ``WebSocketClient`` and upgrades flat appkit payloads
+(``loop_input``, ``command_request``, …) to protocol-1 envelopes before send.
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ def _coerce_appkit_wire_message(msg: dict[str, Any], client: WebSocketClient) ->
 
 @runtime_checkable
 class ManagedClient(Protocol):
-    """Subset of Layer 0 that ConnectionPool and TurnRunner depend on."""
+    """Subset of WebSocketClient that ConnectionPool and TurnRunner depend on."""
 
     async def connect(self) -> None:
         """Dial and handshake."""
@@ -134,7 +134,7 @@ class WebSocketManagedClient:
 
     @property
     def underlying(self) -> WebSocketClient:
-        """Return the wrapped Layer 0 client."""
+        """Return the wrapped WebSocketClient."""
         return self._client
 
     async def connect(self) -> None:

@@ -13,28 +13,23 @@ logger = logging.getLogger(__name__)
 
 
 def websocket_url_from_config(cfg: Any) -> str:
-    """Construct WebSocket URL from a config-like object.
+    """Build a WebSocket URL from a config-like object.
 
-    Duck-typed across the three workspace configs:
+    Accepts any object that provides one of:
 
-    * ``CLIConfig`` (`soothe-cli`) exposes ``daemon_host`` / ``daemon_port``
-      and a ``websocket_url()`` helper.
-    * ``SootheDaemonConfig`` (`soothe-daemon`) exposes
-      ``transports.websocket.host`` / ``.port``.
-    * Legacy callers may still pass an object with
-      ``daemon.transports.websocket.host`` / ``.port``.
-
-    The SDK deliberately does not import any of those classes — keeping
-    `soothe_sdk` independent of `soothe`, `soothe_cli`, and `soothe_daemon`.
+    * ``websocket_url()`` callable
+    * ``daemon_host`` / ``daemon_port``
+    * ``transports.websocket.host`` / ``.port``
+    * ``daemon.transports.websocket.host`` / ``.port``
 
     Args:
-        cfg: Any object exposing one of the shapes above.
+        cfg: Config-like object.
 
     Returns:
-        WebSocket URL string (e.g., ``"ws://127.0.0.1:8765"``).
+        WebSocket URL (e.g. ``"ws://127.0.0.1:8765"``).
 
     Raises:
-        AttributeError: If ``cfg`` exposes none of the supported shapes.
+        AttributeError: If none of the supported shapes are present.
     """
     if hasattr(cfg, "websocket_url") and callable(cfg.websocket_url):
         url = cfg.websocket_url()
@@ -62,7 +57,7 @@ def websocket_url_from_config(cfg: Any) -> str:
 
 
 async def _ensure_handshake(client: WebSocketClient, *, timeout: float) -> None:
-    """Complete the protocol-1 readiness handshake when not already done (RFC-450 §8.2).
+    """Complete the protocol-1 readiness handshake when not already done.
 
     Args:
         client: Connected WebSocketClient.
@@ -115,7 +110,7 @@ async def check_daemon_status(
 def _daemon_status_indicates_live(status: dict) -> bool:
     """Infer liveness from a ``daemon_status`` response payload.
 
-    Uses ``readiness_state`` (RFC-450 §8.2): transitional states (``starting``,
+    Uses ``readiness_state``: transitional states (``starting``,
     ``warming``) mean the daemon is not yet ready for loops; terminal states
     (``error``, ``degraded``, ``stopped``) mean it cannot serve loops; only
     ``ready`` is live for loop operations.
@@ -142,7 +137,7 @@ async def is_daemon_live(
 ) -> bool:
     """Composite health check: connection + status RPC.
 
-    Optionally waits for daemon to reach "ready" state (IG-489), polling during
+    Optionally waits for daemon to reach "ready" state, polling during
     transitional states like "starting" and "warming".
 
     Args:
@@ -317,7 +312,7 @@ async def fetch_config_section(client: WebSocketClient, section: str, timeout: f
     """Fetch daemon config section via RPC.
 
     Performs ``connection_init`` / ``connection_ack`` handshake when needed
-    before sending the request (RFC-450 §8.2).
+    before sending the request.
 
     Args:
         client: Connected WebSocketClient

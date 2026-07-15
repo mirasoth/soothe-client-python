@@ -1,8 +1,7 @@
-"""Appkit examples (RFC-629 Layer 1).
+"""Appkit offline examples (no live daemon).
 
-Mirrors Go ``examples/appkit`` and TypeScript ``examples/appkit``: offline
-demonstrations of SSEBroadcaster, QueryGate, EventClassifier, ConnectionPool,
-and TurnRunner wiring (no live daemon required).
+Demonstrates SSEBroadcaster, QueryGate, EventClassifier, ConnectionPool, and
+TurnRunner wiring with fakes.
 """
 
 from __future__ import annotations

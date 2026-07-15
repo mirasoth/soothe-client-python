@@ -1,8 +1,7 @@
-"""Soothe WebSocket client for soothe-daemon.
+"""Soothe WebSocket client for talking to a running soothe-daemon.
 
-Layer 0 transport and session helpers. Layer 1 application mechanics live in
-``soothe_client.appkit``. Shared wire codec and path constants live in
-soothe-sdk (`soothe_sdk.wire`, `soothe_sdk.paths`).
+Transport helpers (connect, loops, RPCs) live here. Higher-level session
+and multi-user turn tools live in ``soothe_client.appkit``.
 """
 
 from __future__ import annotations
@@ -42,7 +41,17 @@ from soothe_client.intent_hints import (
 from soothe_client.protocol_params import (
     AuthParams,
     AuthRefreshParams,
+    AutopilotCancelGoalParams,
+    AutopilotDreamParams,
+    AutopilotGetGoalParams,
+    AutopilotGetJobParams,
+    AutopilotListGoalsParams,
+    AutopilotListJobsParams,
+    AutopilotResumeParams,
+    AutopilotStatusParams,
+    AutopilotSubmitParams,
     AutopilotSubscribeParams,
+    AutopilotWakeParams,
     ConfigGetParams,
     ConfigReloadParams,
     CronAddParams,
@@ -144,6 +153,16 @@ __all__ = [
     "LoopDetachParams",
     "SubscribeParams",
     "AutopilotSubscribeParams",
+    "AutopilotStatusParams",
+    "AutopilotSubmitParams",
+    "AutopilotListGoalsParams",
+    "AutopilotGetGoalParams",
+    "AutopilotCancelGoalParams",
+    "AutopilotWakeParams",
+    "AutopilotDreamParams",
+    "AutopilotResumeParams",
+    "AutopilotListJobsParams",
+    "AutopilotGetJobParams",
     "JobCreateParams",
     "JobStatusParams",
     "JobPauseParams",

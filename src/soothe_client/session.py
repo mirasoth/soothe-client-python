@@ -60,7 +60,7 @@ async def bootstrap_loop_session(
 ) -> dict[str, Any]:
     """Handshake with the daemon, create or attach to a loop, and subscribe for events.
 
-    Uses the protocol-1 wire contract (RFC-450): ``connection_init``/``ack``
+    Uses the protocol-1 wire contract: ``connection_init``/``ack``
     handshake, then ``request('loop_new')`` or ``request('loop_reattach')`` for
     resume, then ``subscribe('loop_events')`` for the event stream.
 
@@ -68,8 +68,7 @@ async def bootstrap_loop_session(
         client: ``WebSocketClient`` instance (connected).
         resume_loop_id: If set, reattach to this existing loop via
             ``loop_reattach``. Otherwise create a new loop via ``loop_new``.
-        stream_delivery: Daemon stream shaping — one of ``batch`` | ``adaptive``
-            (default, IG-441) | ``streaming``.
+        stream_delivery: Daemon stream shaping — one of ``batch`` | ``adaptive`` | ``streaming``.
         is_ephemeral: When True, loop execution data is GC'd after idle period.
         workspace: Optional client project directory (e.g. user's CWD). Sent as
             ``workspace`` on ``loop_new`` and used directly by the runner when set.
@@ -118,7 +117,7 @@ async def bootstrap_loop_session(
             )
         loop_id = resume_loop_id
     else:
-        # New-loop path: ``loop_new`` creates the conversation. Per RFC-450 §10.1
+        # New-loop path: ``loop_new`` creates the conversation. Per
         # the field is ``workspace`` (renamed from ``client_workspace``).
         loop_new_params: dict[str, Any] = {}
         if workspace is not None:
@@ -143,7 +142,7 @@ async def bootstrap_loop_session(
         if not loop_id:
             raise ValueError("loop_new response missing loop_id")
 
-        # RFC-621: parse workspace mapping for container path translation
+        #: parse workspace mapping for container path translation
         mapping_data = new_resp.get("workspace_mapping")
         if mapping_data and mapping_data.get("host_root") and mapping_data.get("container_root"):
             from soothe_sdk.wire.protocol import WorkspaceMapping
@@ -156,14 +155,14 @@ async def bootstrap_loop_session(
             if hasattr(client, "workspace_mapping"):
                 client.workspace_mapping = workspace_mapping
 
-    # IG-441: three first-class modes (batch / adaptive / streaming). Unknown
+    #: three first-class modes (batch / adaptive / streaming). Unknown
     # values fall back to ``adaptive`` (the new bootstrap default).
     delivery = (
         stream_delivery if stream_delivery in ("batch", "adaptive", "streaming") else "adaptive"
     )
     # Subscribe to the loop's event stream. Protocol-1 uses ``subscribe`` with
     # the ``loop_events`` target — the subscription is confirmed implicitly
-    # (RFC-450 §9.4). If the daemon cannot honour it, an ``error`` with the
+    # . If the daemon cannot honour it, an ``error`` with the
     # subscription ``id`` arrives within the timeout window and ``subscribe``
     # raises ``ProtocolError``.
     await client.subscribe(

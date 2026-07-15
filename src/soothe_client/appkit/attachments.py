@@ -1,4 +1,4 @@
-"""Image attachment compaction for appkit (RFC-629 Layer 1).
+"""Image attachment compaction for appkit.
 
 Downscales ``image/*`` payloads when either dimension exceeds a max size.
 Non-images and decode failures pass through unchanged. Requires Pillow when
