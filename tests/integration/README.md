@@ -22,3 +22,5 @@ SOOTHE_INTEGRATION=0 make test-integration
 
 - Daemon unreachable → tests are **skipped** (unless `SOOTHE_INTEGRATION=1`, then **fail**)
 - Not part of default `make test` / CI (unit + examples only)
+- Catalog RPCs such as `skills_list` run after an ephemeral loop bootstrap so the daemon has a workspace path
+- `autopilot_status` is skipped when the daemon does not register that request method
