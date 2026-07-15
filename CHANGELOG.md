@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.4] - 2026-07-15
+
+### Added
+- `Makefile` with lint/format/fix/test/build/verify/publish and version bump targets
+- GitHub Actions CI (3.11–3.13) and Release (PyPI trusted publishing)
+- Appkit examples under `examples/appkit/`
+- `DEFAULT_DELIVERABLE_PHASES` (excludes `plan_direct`)
+
 ## [0.9.3] - 2026-07-15
 
 ### Added

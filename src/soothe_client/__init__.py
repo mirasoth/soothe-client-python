@@ -32,6 +32,7 @@ from soothe_client.helpers import (
     websocket_url_from_config,
 )
 from soothe_client.intent_hints import (
+    DEFAULT_DELIVERABLE_PHASES,
     EMBED,
     IMAGE_TO_TEXT,
     OCR,
@@ -126,6 +127,7 @@ __all__ = [
     "IMAGE_TO_TEXT",
     "OCR",
     "EMBED",
+    "DEFAULT_DELIVERABLE_PHASES",
     "validate_loop_input_intent_hint",
     "LoopGetParams",
     "LoopListParams",

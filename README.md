@@ -9,6 +9,8 @@ Peer of [`soothe-client-go`](https://github.com/mirasoth/soothe-client-go) and
 
 ```bash
 pip install soothe-client-python
+# optional image compaction:
+pip install 'soothe-client-python[image]'
 # or, in the soothe monorepo workspace:
 uv sync --all-packages
 ```
@@ -20,7 +22,7 @@ from soothe_client import WebSocketClient, bootstrap_loop_session, connect_webso
 
 client = WebSocketClient(url="ws://127.0.0.1:8765")
 await connect_websocket_with_retries(client)
-loop_id = await bootstrap_loop_session(client, resume_loop_id=None)
+status = await bootstrap_loop_session(client, resume_loop_id=None)
 ```
 
 ## Layout (RFC-629)
@@ -34,22 +36,18 @@ loop_id = await bootstrap_loop_session(client, resume_loop_id=None)
 | `helpers` | Daemon status / config / skills RPCs |
 | `ws_command_client` | Sync/async command helpers |
 | `protocol_params` | Client-side params models |
-| `intent_hints` | Loop input intent-hint validation |
+| `intent_hints` | Intent-hint validation + `DEFAULT_DELIVERABLE_PHASES` |
 
 ### Layer 1 (`soothe_client.appkit`)
 
-Reusable application mechanics (product-agnostic):
-
 | Symbol | Role |
 |--------|------|
-| `unwrap_next` / `is_loop_scoped_event` | Protocol-1 stream helpers |
-| `QueryGate` | Single-flight cancel-before-context gating |
-| `TurnEventPipeline` / `run_turn_pipeline` | Reader / processor / applier concurrency |
 | `DaemonSession` | Dual-socket loop session + `iter_turn_chunks` (CLI-grade) |
+| `QueryGate` | Single-flight cancel-before-context gating |
 | `EventClassifier` / `extract_thinking_step` | Deliverable / thinking-step mapping |
 | `SSEBroadcaster` | Drop-on-full SSE-style fan-out |
 | `ConnectionPool` / `TurnRunner` | Pooled multi-session turn execution |
-| Idle / soft-complete / `compact_*` | Turn lifecycle + image compaction (optional Pillow) |
+| Idle / soft-complete / `compact_*` | Turn lifecycle + optional Pillow compaction |
 | `SessionStore` | Persistence seam (Protocol) |
 
 ```python
@@ -63,13 +61,37 @@ async for namespace, mode, data in session.iter_turn_chunks():
 ```
 
 Shared wire codec and path constants remain in **soothe-sdk**
-(`soothe_sdk.wire`, `soothe_sdk.paths`) so the daemon can use them without
-depending on this client package.
+(`soothe_sdk.wire`, `soothe_sdk.paths`).
 
-## Development (monorepo)
+## Development
+
+From this repository (or the `client/python` submodule):
 
 ```bash
-# from soothe repo root
-uv sync --all-packages
-uv run pytest client/python/tests/unit -q
+make sync-dev      # uv sync --extra dev --extra image
+make fix           # ruff --fix + format
+make check         # format-check + lint + unit tests
+make test          # unit + examples
+make verify        # format-check + lint + test + build
+make publish-dry   # inspect upload without publishing
+make publish       # PyPI (trusted publisher in CI, or UV_PUBLISH_TOKEN locally)
 ```
+
+| Target | Purpose |
+|--------|---------|
+| `format` / `format-check` | Ruff format |
+| `lint` / `lint-fix` / `fix` | Ruff lint (+ auto-fix) |
+| `test` / `test-unit` / `test-examples` | Pytest |
+| `test-coverage` | Coverage HTML under `htmlcov/` |
+| `build` | `uv build` → `dist/` |
+| `verify` | Full pre-publish gate |
+| `version-patch` / `-minor` / `-major` | Bump `VERSION` |
+
+Examples live under `examples/appkit/` (run with `make test-examples`).
+
+## Release
+
+GitHub Actions:
+
+- **CI** (`.github/workflows/ci.yml`) — format, lint, tests on Python 3.11–3.13
+- **Release** (`.github/workflows/release.yml`) — on GitHub Release publish, builds and uploads to PyPI via trusted publishing (skips if the `VERSION` already exists)

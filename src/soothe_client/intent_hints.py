@@ -11,6 +11,19 @@ EMBED: Final = "embed"
 
 REMOVED_INTENT_HINTS: frozenset[str] = frozenset({"direct_llm", "quiz"})
 
+# Default deliverable phases for turn-ending replies (excludes plan_direct narration).
+DEFAULT_DELIVERABLE_PHASES: frozenset[str] = frozenset(
+    {
+        "quiz",
+        "goal_completion",
+        "direct_model",
+        "text_completion",
+        "image_to_text",
+        "ocr",
+        "embed",
+    }
+)
+
 _REMOVED_INTENT_HINT_MESSAGES: dict[str, str] = {
     "direct_llm": (
         "intent_hint direct_llm is removed; "
