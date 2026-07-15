@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from soothe_sdk.client.wire import ProtocolError
+from soothe_sdk.wire.codec import ProtocolError
 
 from soothe_client.session import bootstrap_loop_session
 

@@ -401,7 +401,7 @@ async def test_send_command_uses_encode_envelope_not_raw_json_dumps() -> None:
     assert ", " not in raw
     assert ": " not in raw
     # And the decoded form round-trips via decode_envelope.
-    from soothe_sdk.client.wire import decode_envelope
+    from soothe_sdk.wire.codec import decode_envelope
 
     decoded = decode_envelope(raw)
     assert isinstance(decoded, dict)

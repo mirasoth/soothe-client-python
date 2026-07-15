@@ -12,7 +12,7 @@ import logging
 from typing import Any
 from uuid import uuid4
 
-from soothe_sdk.client.wire import (
+from soothe_sdk.wire.codec import (
     ConnectionInitEnvelope,
     ConnectionInitParams,
     ErrorEnvelope,

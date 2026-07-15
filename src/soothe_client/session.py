@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from soothe_sdk.client.wire import ProtocolError
+from soothe_sdk.wire.codec import ProtocolError
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,7 @@ async def bootstrap_loop_session(
         # RFC-621: parse workspace mapping for container path translation
         mapping_data = new_resp.get("workspace_mapping")
         if mapping_data and mapping_data.get("host_root") and mapping_data.get("container_root"):
-            from soothe_sdk.client.protocol import WorkspaceMapping
+            from soothe_sdk.wire.protocol import WorkspaceMapping
 
             workspace_mapping = WorkspaceMapping(
                 host_root=mapping_data["host_root"],

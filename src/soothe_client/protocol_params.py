@@ -590,7 +590,7 @@ class RpcCommandParams(ParamsBase):
 # The wire.py version carries the full handshake structure (client_version,
 # client_name, accept_proto, capabilities) and is used by the actual
 # connection_init envelope — see WireEnvelope/ConnectionInitEnvelope there.
-from soothe_sdk.client.wire import ConnectionInitParams  # noqa: E402,F401
+from soothe_sdk.wire.codec import ConnectionInitParams  # noqa: E402,F401
 
 
 class DisconnectParams(EmptyParams):

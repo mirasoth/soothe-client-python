@@ -13,8 +13,8 @@ from typing import Any
 
 import websockets.asyncio.client
 import websockets.exceptions
-from soothe_sdk.client.protocol import decode_websocket_text, encode_websocket_text
 from soothe_sdk.ux.loop_stream import is_stream_terminal_wire_dict
+from soothe_sdk.wire.protocol import decode_websocket_text, encode_websocket_text
 
 from soothe_client.intent_hints import validate_loop_input_intent_hint
 
@@ -713,7 +713,7 @@ class WebSocketClient:
                 matching ``id``.
             TimeoutError: If no matching response arrives within ``timeout``.
         """
-        from soothe_sdk.client.wire import MessageType, ProtocolError, WireEnvelope
+        from soothe_sdk.wire.codec import MessageType, ProtocolError, WireEnvelope
 
         req_id = self._next_request_id()
         envelope = WireEnvelope(
@@ -779,7 +779,7 @@ class WebSocketClient:
         Raises:
             ConnectionError: If not connected or send fails.
         """
-        from soothe_sdk.client.wire import MessageType, WireEnvelope
+        from soothe_sdk.wire.codec import MessageType, WireEnvelope
 
         envelope = WireEnvelope(
             proto=proto,
@@ -821,7 +821,7 @@ class WebSocketClient:
             ProtocolError: If the daemon sends an ``error`` with the matching
                 ``id`` within the ``timeout`` window.
         """
-        from soothe_sdk.client.wire import MessageType, ProtocolError, WireEnvelope
+        from soothe_sdk.wire.codec import MessageType, ProtocolError, WireEnvelope
 
         sub_id = self._next_request_id()
         envelope = WireEnvelope(
@@ -885,7 +885,7 @@ class WebSocketClient:
         Raises:
             ConnectionError: If not connected.
         """
-        from soothe_sdk.client.wire import MessageType, WireEnvelope
+        from soothe_sdk.wire.codec import MessageType, WireEnvelope
 
         envelope = WireEnvelope(
             proto=proto,
@@ -914,7 +914,7 @@ class WebSocketClient:
             ConnectionError: If not connected (only when no reader task is
                 active; the background reader returns ``None`` on EOF).
         """
-        from soothe_sdk.client.wire import MessageType
+        from soothe_sdk.wire.codec import MessageType
 
         if self._pending_events:
             event = self._pending_events.popleft()
@@ -1129,7 +1129,7 @@ class WebSocketClient:
         If the connection is closed, this method silently succeeds —
         ``wait_for_connection_ack()`` will either find a pending ack or timeout.
         """
-        from soothe_sdk.client.wire import ConnectionInitEnvelope, ConnectionInitParams
+        from soothe_sdk.wire.codec import ConnectionInitEnvelope, ConnectionInitParams
 
         envelope = ConnectionInitEnvelope(
             params=ConnectionInitParams(

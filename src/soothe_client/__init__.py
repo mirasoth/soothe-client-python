@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import importlib.metadata
 
-from soothe_sdk.client.wire import ProtocolError
 from soothe_sdk.core.types import VerbosityLevel
+from soothe_sdk.wire.codec import ProtocolError
 
 from soothe_client.helpers import (
     check_daemon_status,

@@ -35,8 +35,8 @@ loop_id = await bootstrap_loop_session(client, resume_loop_id=None)
 | `intent_hints` | Loop input intent-hint validation |
 
 Shared wire codec and path constants remain in **soothe-sdk**
-(`soothe_sdk.client.wire`, `soothe_sdk.client.config`) so the daemon can use
-them without depending on this client package.
+(`soothe_sdk.wire`, `soothe_sdk.paths`) so the daemon can use them without
+depending on this client package.
 
 ## Development (monorepo)
 

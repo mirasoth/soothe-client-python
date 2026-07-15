@@ -24,7 +24,7 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from soothe_sdk.client.wire import ProtocolError
+from soothe_sdk.wire.codec import ProtocolError
 
 from soothe_client.websocket import WebSocketClient
 
