@@ -333,3 +333,72 @@ async def fetch_config_section(client: WebSocketClient, section: str, timeout: f
     await _ensure_handshake(client, timeout=timeout)
     response = await client.request("config_get", {"section": section}, timeout=timeout)
     return response.get(section, {})
+
+
+async def fetch_loop_history(
+    client: WebSocketClient,
+    loop_id: str,
+    *,
+    timeout: float = 30.0,
+) -> dict[str, Any]:
+    """Fetch goal display snapshots plus live card tail via RPC."""
+    lid = str(loop_id or "").strip()
+    if not lid:
+        raise ValueError("loop_id is required")
+    await _ensure_handshake(client, timeout=timeout)
+    return await client.loop_history_fetch(lid, timeout=timeout)
+
+
+async def fetch_loop_cards(
+    client: WebSocketClient,
+    loop_id: str,
+    *,
+    timeout: float = 30.0,
+) -> dict[str, Any]:
+    """Fetch the daemon's bound display-card snapshot for a loop."""
+    lid = str(loop_id or "").strip()
+    if not lid:
+        raise ValueError("loop_id is required")
+    await _ensure_handshake(client, timeout=timeout)
+    return await client.loop_cards_fetch(lid, timeout=timeout)
+
+
+async def fetch_loop_messages(
+    client: WebSocketClient,
+    loop_id: str,
+    *,
+    limit: int = 100,
+    offset: int = 0,
+    include_events: bool = False,
+    timeout: float = 10.0,
+) -> list[dict[str, Any]]:
+    """Load persisted conversation rows for a loop."""
+    lid = str(loop_id or "").strip()
+    if not lid:
+        return []
+    await _ensure_handshake(client, timeout=timeout)
+    resp = await client.loop_messages(
+        lid,
+        limit=limit,
+        offset=offset,
+        include_events=include_events,
+        timeout=timeout,
+    )
+    raw = resp.get("messages")
+    if not isinstance(raw, list):
+        return []
+    return [m for m in raw if isinstance(m, dict)]
+
+
+__all__ = [
+    "websocket_url_from_config",
+    "check_daemon_status",
+    "is_daemon_live",
+    "request_daemon_shutdown",
+    "request_daemon_config_reload",
+    "fetch_skills_catalog",
+    "fetch_config_section",
+    "fetch_loop_history",
+    "fetch_loop_cards",
+    "fetch_loop_messages",
+]

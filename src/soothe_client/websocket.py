@@ -1026,6 +1026,97 @@ class WebSocketClient:
             params["clarification_answers"] = list(clarification_answers)
         await self.notify("loop_input", params)
 
+    async def loop_list(
+        self,
+        *,
+        limit: int = 20,
+        filter: dict[str, Any] | None = None,
+        timeout: float = 15.0,
+    ) -> dict[str, Any]:
+        """List loops via ``loop_list`` RPC."""
+        params: dict[str, Any] = {"limit": limit}
+        if filter:
+            params["filter"] = filter
+        return await self.request("loop_list", params, timeout=timeout)
+
+    async def loop_get(
+        self,
+        loop_id: str,
+        *,
+        verbose: bool = False,
+        timeout: float = 15.0,
+    ) -> dict[str, Any]:
+        """Fetch one loop via ``loop_get`` RPC."""
+        return await self.request(
+            "loop_get",
+            {"loop_id": loop_id, "verbose": verbose},
+            timeout=timeout,
+        )
+
+    async def loop_history_fetch(self, loop_id: str, *, timeout: float = 30.0) -> dict[str, Any]:
+        """Fetch goal display snapshots + live card tail (``loop_history_fetch``)."""
+        return await self.request(
+            "loop_history_fetch",
+            {"loop_id": loop_id},
+            timeout=timeout,
+        )
+
+    async def loop_cards_fetch(self, loop_id: str, *, timeout: float = 30.0) -> dict[str, Any]:
+        """Fetch bound display-card snapshot (``loop_cards_fetch``)."""
+        return await self.request(
+            "loop_cards_fetch",
+            {"loop_id": loop_id},
+            timeout=timeout,
+        )
+
+    async def loop_messages(
+        self,
+        loop_id: str,
+        *,
+        limit: int = 100,
+        offset: int = 0,
+        include_events: bool = False,
+        timeout: float = 10.0,
+    ) -> dict[str, Any]:
+        """Load persisted conversation rows (``loop_messages``)."""
+        return await self.request(
+            "loop_messages",
+            {
+                "loop_id": loop_id,
+                "limit": limit,
+                "offset": offset,
+                "include_events": include_events,
+            },
+            timeout=timeout,
+        )
+
+    async def loop_state_get(self, loop_id: str, *, timeout: float = 30.0) -> dict[str, Any]:
+        """Load StrangeLoop state channels (``loop_state_get``)."""
+        return await self.request(
+            "loop_state_get",
+            {"loop_id": loop_id},
+            timeout=timeout,
+        )
+
+    async def loop_state_update(
+        self,
+        loop_id: str,
+        values: dict[str, Any],
+        *,
+        as_node: str | None = None,
+        timeout: float = 10.0,
+    ) -> dict[str, Any]:
+        """Merge partial state into a loop (``loop_state_update``)."""
+        from soothe_sdk.wire.protocol import _serialize_for_json
+
+        payload_values = _serialize_for_json(values)
+        if not isinstance(payload_values, dict):
+            return {}
+        params: dict[str, Any] = {"loop_id": loop_id, "values": payload_values}
+        if as_node:
+            params["as_node"] = as_node
+        return await self.request("loop_state_update", params, timeout=timeout)
+
     async def list_skills(self, *, timeout: float = 15.0) -> dict[str, Any]:
         """Request wire-safe skill metadata from the daemon (RFC-400 ``skills_list``)."""
         return await self.request("skills_list", {}, timeout=timeout)

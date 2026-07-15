@@ -45,9 +45,20 @@ Reusable application mechanics (product-agnostic):
 | `unwrap_next` / `is_loop_scoped_event` | Protocol-1 stream helpers |
 | `QueryGate` | Single-flight cancel-before-context gating |
 | `TurnEventPipeline` / `run_turn_pipeline` | Reader / processor / applier concurrency |
+| `DaemonSession` | Dual-socket loop session + `iter_turn_chunks` (CLI-grade) |
 | `SessionStore` | Persistence seam (Protocol) |
 
-Pool / TurnRunner / EventClassifier parity with Go/TS follows in later slices.
+Pool / TurnRunner / EventClassifier / SSE parity with Go/TS follows later.
+
+```python
+from soothe_client.appkit import DaemonSession
+
+session = DaemonSession("ws://127.0.0.1:8765")
+await session.connect()
+await session.send_turn("hello")
+async for namespace, mode, data in session.iter_turn_chunks():
+    ...
+```
 
 Shared wire codec and path constants remain in **soothe-sdk**
 (`soothe_sdk.wire`, `soothe_sdk.paths`) so the daemon can use them without
