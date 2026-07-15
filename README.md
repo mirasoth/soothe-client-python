@@ -23,7 +23,9 @@ await connect_websocket_with_retries(client)
 loop_id = await bootstrap_loop_session(client, resume_loop_id=None)
 ```
 
-## Layout (RFC-629 Layer 0)
+## Layout (RFC-629)
+
+### Layer 0 (transport)
 
 | Module | Role |
 |--------|------|
@@ -33,6 +35,19 @@ loop_id = await bootstrap_loop_session(client, resume_loop_id=None)
 | `ws_command_client` | Sync/async command helpers |
 | `protocol_params` | Client-side params models |
 | `intent_hints` | Loop input intent-hint validation |
+
+### Layer 1 (`soothe_client.appkit`)
+
+Reusable application mechanics (product-agnostic):
+
+| Symbol | Role |
+|--------|------|
+| `unwrap_next` / `is_loop_scoped_event` | Protocol-1 stream helpers |
+| `QueryGate` | Single-flight cancel-before-context gating |
+| `TurnEventPipeline` / `run_turn_pipeline` | Reader / processor / applier concurrency |
+| `SessionStore` | Persistence seam (Protocol) |
+
+Pool / TurnRunner / EventClassifier parity with Go/TS follows in later slices.
 
 Shared wire codec and path constants remain in **soothe-sdk**
 (`soothe_sdk.wire`, `soothe_sdk.paths`) so the daemon can use them without

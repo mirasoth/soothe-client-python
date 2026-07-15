@@ -1,7 +1,8 @@
 """Soothe WebSocket client for soothe-daemon.
 
-Layer 0 transport and session helpers. Shared wire codec and path constants
-live in soothe-sdk (`soothe_sdk.client.wire`, `soothe_sdk.client.config`).
+Layer 0 transport and session helpers. Layer 1 application mechanics live in
+``soothe_client.appkit``. Shared wire codec and path constants live in
+soothe-sdk (`soothe_sdk.wire`, `soothe_sdk.paths`).
 """
 
 from __future__ import annotations

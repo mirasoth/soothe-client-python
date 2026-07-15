@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "soothe-client-python"
 dynamic = ["version"]
-description = "WebSocket client for soothe-daemon (Python)"
+description = "WebSocket client + appkit for soothe-daemon (Python)"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11,<3.15"
