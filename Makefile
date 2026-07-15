@@ -11,7 +11,7 @@ PKG_VERSION := $(shell cat VERSION 2>/dev/null || echo 0.0.0)
 
 .PHONY: help sync sync-dev install clean distclean \
 	format format-check lint lint-fix fix \
-	test test-unit test-examples test-coverage \
+	test test-unit test-examples test-integration test-coverage \
 	typecheck build pack-check verify \
 	publish publish-dry publish-test \
 	version-patch version-minor version-major \
@@ -83,7 +83,7 @@ typecheck: sync-dev ## Run mypy on the package
 # Test
 # ---------------------------------------------------------------------------
 
-test: test-unit test-examples ## Run unit + example tests
+test: test-unit test-examples ## Run unit + example tests (not integration)
 
 test-unit: sync-dev ## Run unit tests
 	uv run pytest tests/unit -q
@@ -92,6 +92,10 @@ test-unit: sync-dev ## Run unit tests
 test-examples: sync-dev ## Run appkit example tests
 	uv run pytest examples -q
 	@echo "✓ Example tests passed"
+
+test-integration: sync-dev ## Live daemon tests (skip if soothed unreachable)
+	uv run pytest tests/integration -v
+	@echo "✓ Integration tests finished"
 
 test-coverage: sync-dev ## Unit tests with coverage report
 	uv run pytest tests/unit --cov=soothe_client --cov-report=term-missing --cov-report=html

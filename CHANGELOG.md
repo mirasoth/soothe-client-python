@@ -5,6 +5,15 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.5] - 2026-07-15
+
+### Added
+- Live-daemon `tests/integration/` suite (connection, helpers, loops, DaemonSession, pool/TurnRunner, jobs)
+- `make test-integration` with skip-if-daemon-down / `SOOTHE_INTEGRATION=1` force-fail
+
+### Fixed
+- `WebSocketManagedClient.send_message` coerces flat appkit payloads (`loop_input`, `command_request`) to protocol-1 envelopes so TurnRunner works against envelope-only daemons
+
 ## [0.9.4] - 2026-07-15
 
 ### Added

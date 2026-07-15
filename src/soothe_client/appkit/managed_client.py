@@ -18,6 +18,68 @@ BootstrapFunc = Callable[
     Awaitable[str],
 ]
 
+# Flat appkit payloads still use legacy ``{"type": "<op>", ...}`` maps (parity
+# with Go InputMessageForLoop). The live daemon accepts protocol-1 envelopes
+# only — coerce at the ManagedClient boundary before send.
+_ALREADY_ENVELOPE_TYPES = frozenset(
+    {
+        "request",
+        "response",
+        "notification",
+        "subscribe",
+        "next",
+        "error",
+        "complete",
+        "unsubscribe",
+        "connection_init",
+        "connection_ack",
+        "ping",
+        "pong",
+        "receipt_response",
+    }
+)
+_NOTIFICATION_METHODS = frozenset({"loop_input", "slash_command", "disconnect", "delivery_ack"})
+_REQUEST_METHOD_ALIASES = {
+    # TurnRunner cancel uses flat command_request; wire method is rpc_command.
+    "command_request": "rpc_command",
+}
+
+
+def _coerce_appkit_wire_message(msg: dict[str, Any], client: WebSocketClient) -> dict[str, Any]:
+    """Upgrade flat appkit dicts to protocol-1 envelopes when needed."""
+    from soothe_sdk.wire.codec import MessageType, WireEnvelope
+
+    msg_type = str(msg.get("type") or "")
+    if msg.get("proto") == "1" or msg_type in _ALREADY_ENVELOPE_TYPES:
+        return msg
+
+    params = {
+        key: value
+        for key, value in msg.items()
+        if key not in {"type", "proto", "method", "params", "id", "request_id"}
+    }
+
+    if msg_type in _NOTIFICATION_METHODS:
+        return WireEnvelope(
+            proto="1",
+            type=MessageType.NOTIFICATION.value,
+            method=msg_type,
+            params=params,
+        ).to_wire_dict()
+
+    if msg_type in _REQUEST_METHOD_ALIASES or msg_type:
+        request_method = _REQUEST_METHOD_ALIASES.get(msg_type, msg_type)
+        req_id = str(msg.get("request_id") or msg.get("id") or client._next_request_id())
+        return WireEnvelope(
+            proto="1",
+            type=MessageType.REQUEST.value,
+            method=request_method,
+            params=params,
+            id=req_id,
+        ).to_wire_dict()
+
+    return msg
+
 
 @runtime_checkable
 class ManagedClient(Protocol):
@@ -89,7 +151,7 @@ class WebSocketManagedClient:
     async def send_message(self, msg: Any) -> None:
         if not isinstance(msg, dict):
             raise TypeError("send_message expects a dict payload")
-        await self._client.send(msg)
+        await self._client.send(_coerce_appkit_wire_message(msg, self._client))
 
     async def receive_messages(
         self,

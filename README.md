@@ -81,13 +81,17 @@ make publish       # PyPI (trusted publisher in CI, or UV_PUBLISH_TOKEN locally)
 |--------|---------|
 | `format` / `format-check` | Ruff format |
 | `lint` / `lint-fix` / `fix` | Ruff lint (+ auto-fix) |
-| `test` / `test-unit` / `test-examples` | Pytest |
+| `test` / `test-unit` / `test-examples` | Pytest (offline) |
+| `test-integration` | Live daemon suite (`tests/integration/`) |
 | `test-coverage` | Coverage HTML under `htmlcov/` |
 | `build` | `uv build` → `dist/` |
 | `verify` | Full pre-publish gate |
 | `version-patch` / `-minor` / `-major` | Bump `VERSION` |
 
 Examples live under `examples/appkit/` (run with `make test-examples`).
+
+Live-daemon coverage lives under `tests/integration/` (`make test-integration`;
+skipped automatically when `soothed` is unreachable).
 
 ## Release
 
