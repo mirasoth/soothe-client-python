@@ -9,22 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `connected_websocket` / `protocol1_rpc` helpers for oneshot Typer / TUI RPCs
-
-## [0.9.5] - 2026-07-15
-
-### Added
-- Live-daemon `tests/integration/` suite (connection, helpers, loops, DaemonSession, pool/TurnRunner, jobs)
-- `make test-integration` with skip-if-daemon-down / `SOOTHE_INTEGRATION=1` force-fail
-- Runnable agent examples under `examples/01_*.py` … `06_*.py` (hello → pool → jobs)
+- Live-daemon `tests/integration/` suite and `make test-integration`
+- Runnable agent examples (`examples/01`–`06`) with `make test-examples` (live) / `make test-examples-offline`
+- `pillow` as a default dependency (removed optional `[image]` extra)
 
 ### Changed
 - Require `soothe-sdk>=0.8.1` (canonical `soothe_sdk.wire` / `soothe_sdk.paths`)
-- Public package docs/README are end-user facing (no internal design-doc identifiers)
-- `pillow` is a default dependency (removed optional `[image]` extra)
+- Public package docs/README are end-user facing
+- Examples default to fast `text_completion` (`SOOTHE_EXAMPLE_AGENT=1` for full agent)
 
 ### Fixed
-- `WebSocketManagedClient.send_message` coerces flat appkit payloads (`loop_input`, `command_request`) to protocol-1 envelopes so TurnRunner works against envelope-only daemons
-- `DaemonSession.iter_turn_chunks` ends on turn-scoped `soothe.stream.end` and supports absolute `max_wait_s` timeouts
+- `WebSocketManagedClient.send_message` coerces flat appkit payloads to protocol-1 envelopes
+- `DaemonSession.iter_turn_chunks` ends on turn-scoped `soothe.stream.end` and supports `max_wait_s`
 - Clearer handshake errors when the daemon is `stopped`, `error`, or `degraded`
 
 ## [0.9.4] - 2026-07-15
