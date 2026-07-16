@@ -141,6 +141,7 @@ _AUTOPilot_COMMANDS = {
     "list_goals": "autopilot_list_goals",
     "get_goal": "autopilot_get_goal",
     "cancel_goal": "autopilot_cancel_goal",
+    "cancel_all": "autopilot_cancel_all",
     "wake": "autopilot_wake",
     "dream": "autopilot_dream",
     "resume": "autopilot_resume",
@@ -285,6 +286,10 @@ class WsCommandClient:
     async def autopilot_cancel_goal(self, goal_id: str) -> dict[str, Any]:
         """Cancel a goal."""
         return await self._send_command("autopilot_cancel_goal", {"goal_id": goal_id})
+
+    async def autopilot_cancel_all(self) -> dict[str, Any]:
+        """Cancel all open (non-terminal) autopilot goals."""
+        return await self._send_command("autopilot_cancel_all")
 
     async def autopilot_wake(self) -> dict[str, Any]:
         """Exit dreaming mode."""
@@ -519,6 +524,10 @@ class SyncWsCommandClient:
     def autopilot_cancel_goal(self, goal_id: str) -> dict[str, Any]:
         """Cancel a goal (sync)."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_cancel_goal(goal_id)))
+
+    def autopilot_cancel_all(self) -> dict[str, Any]:
+        """Cancel all open autopilot goals (sync)."""
+        return cast(dict[str, Any], self._run_async(self._client.autopilot_cancel_all()))
 
     def autopilot_wake(self) -> dict[str, Any]:
         """Exit dreaming mode (sync)."""

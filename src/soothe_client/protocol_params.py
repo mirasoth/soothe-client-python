@@ -32,6 +32,7 @@ __all__ = [
     "AutopilotListGoalsParams",
     "AutopilotGetGoalParams",
     "AutopilotCancelGoalParams",
+    "AutopilotCancelAllParams",
     "AutopilotWakeParams",
     "AutopilotDreamParams",
     "AutopilotResumeParams",
@@ -361,6 +362,10 @@ class AutopilotCancelGoalParams(ParamsBase):
     """
 
     goal_id: str = Field(..., min_length=1)
+
+
+class AutopilotCancelAllParams(EmptyParams):
+    """Params for ``method=autopilot_cancel_all`` — no required fields."""
 
 
 class AutopilotWakeParams(EmptyParams):
