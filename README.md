@@ -45,7 +45,8 @@ More patterns: [`examples/`](examples/) (hello → streaming → multi-turn → 
 
 ```bash
 make sync-dev
-make check          # lint + unit tests
-make test-examples  # offline appkit examples
-make test-integration  # needs soothed
+make check                 # lint + unit tests
+make test-examples-offline # offline appkit examples
+make test-examples         # live 01–06 (needs soothed)
+make test-integration      # live integration suite (needs soothed)
 ```

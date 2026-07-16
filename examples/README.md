@@ -7,6 +7,9 @@ Runnable scripts that talk to a live **soothe-daemon**.
 export SOOTHE_WS_URL=ws://127.0.0.1:8765   # optional
 uv run python examples/01_hello.py
 
+# Or run every live example:
+make test-examples
+
 # Examples default to fast text_completion. Full agent path:
 #   SOOTHE_EXAMPLE_AGENT=1 uv run python examples/02_stream_turn.py
 # Per-turn wait (seconds): SOOTHE_EXAMPLE_TIMEOUT=90
@@ -21,4 +24,4 @@ uv run python examples/01_hello.py
 | `05_pool_service.py` | `ConnectionPool` + `TurnRunner` (multi-session service style) |
 | `06_jobs.py` | Create / status / cancel a background job |
 
-Offline (no daemon) appkit demos remain under `examples/appkit/` (`make test-examples`).
+Offline (no daemon) appkit demos remain under `examples/appkit/` (`make test-examples-offline`).
