@@ -18,7 +18,12 @@ from soothe_client.appkit.chunk_filter import should_drop_stream_chunk_early
 from soothe_client.appkit.events import unwrap_next
 from soothe_client.appkit.observability import TurnEventStats
 from soothe_client.session import bootstrap_loop_session, connect_websocket_with_retries
-from soothe_client.stream_terminal import STREAM_END, is_turn_end_custom_data
+from soothe_client.stream_terminal import (
+    STREAM_END,
+    is_turn_end_custom_data,
+    is_turn_progress_chunk,
+)
+from soothe_client.turn_boundary import frame_seq, frame_turn_id
 from soothe_client.websocket import WebSocketClient
 
 logger = logging.getLogger(__name__)
@@ -62,6 +67,9 @@ class DaemonSession:
         self.last_turn_end_state: str | None = None
         self.last_turn_cancellation_seen: bool = False
         self.last_turn_error_message: str | None = None
+        # IG-659: last completed turn's seq floor (drop stale prior-turn frames).
+        self._last_turn_end_seq: int = 0
+        self._expected_turn_id: str | None = None
 
     @property
     def client(self) -> WebSocketClient:
@@ -310,7 +318,13 @@ class DaemonSession:
         inbound_dropped_baseline = getattr(self._client, "inbound_dropped", 0)
         query_started = False
         expected_loop_id = self._loop_id
+        # Bind turn_id only after this turn's status=running (do not reuse prior).
+        self._expected_turn_id = None
+        expected_turn_id: str | None = None
         stream_payload_seen = False
+        turn_progress_seen = False
+        last_end_seq = int(getattr(self, "_last_turn_end_seq", 0) or 0)
+        self._last_turn_end_seq = last_end_seq
         self._streaming = True
         turn_read_started = time.monotonic()
         first_event_logged = False
@@ -348,9 +362,10 @@ class DaemonSession:
                     if event and not first_event_logged:
                         first_event_logged = True
                         logger.debug(
-                            "First daemon event on turn: type=%s loop_id=%s",
+                            "First daemon event on turn: type=%s loop_id=%s turn_id=%s",
                             event.get("type"),
                             event.get("loop_id"),
+                            frame_turn_id(event),
                         )
                     if not event:
                         if query_started and not self._client.is_connection_alive():
@@ -372,6 +387,27 @@ class DaemonSession:
                     ):
                         continue
 
+                    # IG-659 phase 5: drop frames at or before prior turn end seq.
+                    ev_seq = frame_seq(event)
+                    if ev_seq is not None and last_end_seq > 0 and ev_seq <= last_end_seq:
+                        continue
+
+                    # IG-659 phases 1–2: drop mismatched turn_id once bound.
+                    ev_turn_id = frame_turn_id(event)
+                    if (
+                        expected_turn_id
+                        and ev_turn_id
+                        and ev_turn_id != expected_turn_id
+                        and event_type in {"event", "status"}
+                    ):
+                        logger.debug(
+                            "Ignoring mismatched turn_id frame type=%s got=%s expected=%s",
+                            event_type,
+                            ev_turn_id[-24:],
+                            expected_turn_id[-24:],
+                        )
+                        continue
+
                     if event_type == "error":
                         err_obj = event.get("error") or {}
                         err_msg = str(
@@ -388,8 +424,14 @@ class DaemonSession:
                         if state == "running":
                             query_started = True
                             progress_seen = True
+                            status_turn = frame_turn_id(event)
+                            if status_turn:
+                                expected_turn_id = status_turn
+                                self._expected_turn_id = status_turn
                         elif query_started and state == "stopped":
                             self.last_turn_end_state = state
+                            if ev_seq is not None:
+                                self._last_turn_end_seq = max(self._last_turn_end_seq, ev_seq)
                             async for chunk in self._drain_stream_events_after_idle(
                                 expected_loop_id=expected_loop_id,
                             ):
@@ -399,6 +441,8 @@ class DaemonSession:
                             if not stream_payload_seen and not self.last_turn_cancellation_seen:
                                 continue
                             self.last_turn_end_state = state
+                            if ev_seq is not None:
+                                self._last_turn_end_seq = max(self._last_turn_end_seq, ev_seq)
                             async for chunk in self._drain_stream_events_after_idle(
                                 expected_loop_id=expected_loop_id,
                             ):
@@ -422,24 +466,40 @@ class DaemonSession:
                         self.turn_event_stats.filtered_early += 1
                         continue
 
-                    # Prior-goal terminal frames can arrive before status=running
-                    # for the new turn; ignoring them prevents a blank second query.
-                    if mode == "custom" and is_turn_end_custom_data(data) and not query_started:
-                        logger.debug(
-                            "Ignoring pre-start turn-end frame %s (loop=%s)",
-                            str(data.get("type", "")).strip(),
-                            (expected_loop_id or "?")[:16],
+                    # Prefer turn_id match when present; else IG-658 progress gate.
+                    if mode == "custom" and is_turn_end_custom_data(data):
+                        data_turn = (
+                            frame_turn_id(data if isinstance(data, dict) else None) or ev_turn_id
                         )
-                        continue
+                        turn_ok = (
+                            not expected_turn_id or not data_turn or data_turn == expected_turn_id
+                        )
+                        if not turn_ok or not query_started or not turn_progress_seen:
+                            logger.debug(
+                                "Ignoring premature turn-end frame %s "
+                                "(loop=%s query_started=%s progress=%s turn_ok=%s)",
+                                str(data.get("type", "")).strip()
+                                if isinstance(data, dict)
+                                else "?",
+                                (expected_loop_id or "?")[:16],
+                                query_started,
+                                turn_progress_seen,
+                                turn_ok,
+                            )
+                            continue
 
                     progress_seen = True
                     stream_payload_seen = True
+                    if is_turn_progress_chunk(mode, data):
+                        turn_progress_seen = True
                     yield (namespace, mode, data)
                     if mode == "custom" and is_turn_end_custom_data(data):
                         custom_type = str(data.get("type", "")).strip()
                         self.last_turn_end_state = (
                             "stream_end" if custom_type == STREAM_END else "completed"
                         )
+                        if ev_seq is not None:
+                            self._last_turn_end_seq = max(self._last_turn_end_seq, ev_seq)
                         async for chunk in self._drain_stream_events_after_idle(
                             expected_loop_id=expected_loop_id,
                         ):
