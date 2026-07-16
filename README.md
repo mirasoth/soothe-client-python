@@ -5,8 +5,6 @@ turns, run jobs.
 
 ```bash
 pip install soothe-client-python
-# optional: image compaction
-pip install 'soothe-client-python[image]'
 ```
 
 Requires a local daemon (default `ws://127.0.0.1:8765`).

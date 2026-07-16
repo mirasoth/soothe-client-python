@@ -1,8 +1,7 @@
 """Image attachment compaction for appkit.
 
 Downscales ``image/*`` payloads when either dimension exceeds a max size.
-Non-images and decode failures pass through unchanged. Requires Pillow when
-compaction is requested; without Pillow, inputs are returned unchanged.
+Non-images and decode failures pass through unchanged.
 """
 
 from __future__ import annotations
@@ -11,6 +10,8 @@ import base64
 import io
 from dataclasses import dataclass
 from typing import Any
+
+from PIL import Image
 
 
 @dataclass(slots=True)
@@ -48,10 +49,6 @@ def compact_image_attachment(
         ``(out_mime, out_b64)``. Non-images and failures return inputs unchanged.
     """
     if not data_b64 or not mime_type.startswith("image/"):
-        return mime_type, data_b64
-    try:
-        from PIL import Image
-    except ImportError:
         return mime_type, data_b64
 
     try:

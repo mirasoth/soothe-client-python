@@ -115,9 +115,18 @@ async def _perform_handshake(ws: Any, *, timeout: float) -> None:
             if state == "ready":
                 return
             if state == "error":
-                raise RuntimeError("Daemon startup failed")
+                raise RuntimeError(
+                    "Daemon startup failed. Check soothed logs, then restart and retry."
+                )
             if state == "degraded":
-                raise RuntimeError("Daemon is degraded")
+                raise RuntimeError(
+                    "Daemon is degraded. Check soothed health, then restart and retry."
+                )
+            if state == "stopped":
+                raise RuntimeError(
+                    "Daemon is stopped (not accepting clients). "
+                    "Start or restart soothed, then retry."
+                )
             if state in _TRANSITIONAL_DAEMON_READY_STATES:
                 await asyncio.sleep(_DAEMON_READY_POLL_INTERVAL_S)
                 await ws.send(encode_envelope(init))

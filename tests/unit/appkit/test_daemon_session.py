@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
@@ -152,3 +153,61 @@ async def test_iter_turn_chunks_ends_on_idle_after_payload() -> None:
     chunks = [c async for c in session.iter_turn_chunks()]
     assert chunks == [(("n",), "custom", {"type": "soothe.test"})]
     assert session.last_turn_end_state == "idle"
+
+
+@pytest.mark.asyncio
+async def test_iter_turn_chunks_ends_on_stream_end() -> None:
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
+    session._loop_id = "L1"
+
+    events = [
+        {"type": "status", "state": "running", "loop_id": "L1"},
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "messages",
+            "data": {"type": "ai", "content": "hi"},
+        },
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn"},
+        },
+        None,
+    ]
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=events),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    chunks = [c async for c in session.iter_turn_chunks()]
+    assert len(chunks) == 2
+    assert session.last_turn_end_state == "stream_end"
+
+
+@pytest.mark.asyncio
+async def test_iter_turn_chunks_max_wait_raises_timeout() -> None:
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
+    session._loop_id = "L1"
+
+    async def never_ends() -> dict | None:
+        await asyncio.sleep(0.05)
+        return {"type": "status", "state": "running", "loop_id": "L1"}
+
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=never_ends),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    with pytest.raises(TimeoutError, match="Turn timed out"):
+        async for _ in session.iter_turn_chunks(max_wait_s=0.1):
+            pass

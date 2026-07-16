@@ -8,7 +8,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from _common import StreamPrinter, daemon_url
+from _common import StreamPrinter, daemon_url, fallback_completion_text, send_and_consume
 
 from soothe_client import TEXT_COMPLETION
 from soothe_client.appkit import DaemonSession
@@ -22,17 +22,10 @@ async def main() -> None:
     assert session.loop_id
 
     printer = StreamPrinter()
-    await session.client.send_input(
-        session.loop_id,
-        prompt,
-        intent_hint=TEXT_COMPLETION,
-    )
-    async for namespace, mode, data in session.iter_turn_chunks():
-        printer.feed(namespace, mode, data)
-    printer.finish()
+    await send_and_consume(session, prompt, printer, intent_hint=TEXT_COMPLETION)
 
     if not printer.had_output:
-        text = await session.fetch_goal_completion_text(session.loop_id)
+        text = await fallback_completion_text(session)
         if text:
             print(text)
 

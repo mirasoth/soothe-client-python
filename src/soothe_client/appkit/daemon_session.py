@@ -24,7 +24,12 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_POST_IDLE_DRAIN_S = 0.5
 _RPC_HANDSHAKE_TIMEOUT_S = 20.0
-_TURN_END_CUSTOM_TYPES = frozenset({"soothe.cognition.strange_loop.completed"})
+_TURN_END_CUSTOM_TYPES = frozenset(
+    {
+        "soothe.cognition.strange_loop.completed",
+        "soothe.stream.end",
+    }
+)
 
 EarlyDropFn = Callable[[tuple[Any, ...], str, Any], bool]
 StatsFactory = Callable[[], Any]
@@ -209,6 +214,7 @@ class DaemonSession:
         clarification_mode: str | None = None,
         clarification_answer: bool = False,
         clarification_answers: list[str] | None = None,
+        intent_hint: str | None = None,
     ) -> None:
         """Send a new user turn to the daemon."""
         if not self._loop_id:
@@ -226,6 +232,7 @@ class DaemonSession:
             clarification_mode=clarification_mode,
             clarification_answer=clarification_answer,
             clarification_answers=clarification_answers,
+            intent_hint=intent_hint,
         )
 
     async def cancel_remote_query(self) -> None:
@@ -288,8 +295,19 @@ class DaemonSession:
             await self._ensure_rpc_connected()
             return await self._rpc_client.request("loop_list", {"limit": limit}, timeout=15.0)
 
-    async def iter_turn_chunks(self) -> AsyncIterator[tuple[tuple[Any, ...], str, Any]]:
-        """Yield ``(namespace, mode, data)`` chunks for the active daemon turn."""
+    async def iter_turn_chunks(
+        self,
+        *,
+        max_wait_s: float | None = None,
+    ) -> AsyncIterator[tuple[tuple[Any, ...], str, Any]]:
+        """Yield ``(namespace, mode, data)`` chunks for the active daemon turn.
+
+        Args:
+            max_wait_s: Optional absolute deadline for the whole turn. When set,
+                raises ``TimeoutError`` if the daemon never emits a turn-end
+                signal in time (idle after payload, stopped, stream.end, or
+                strange_loop.completed).
+        """
         self.turn_event_stats = self._new_turn_stats()
         self.last_turn_end_state = None
         self.last_turn_cancellation_seen = False
@@ -302,6 +320,9 @@ class DaemonSession:
         turn_read_started = time.monotonic()
         first_event_logged = False
         progress_seen = False
+        absolute_deadline = (
+            time.monotonic() + max_wait_s if max_wait_s is not None and max_wait_s > 0 else None
+        )
         peel = getattr(self._client, "peel_stale_pending_control_events", None)
         stale_pending = peel() if callable(peel) else []
         if stale_pending:
@@ -314,6 +335,11 @@ class DaemonSession:
         async with self._read_lock:
             try:
                 while True:
+                    if absolute_deadline is not None and time.monotonic() >= absolute_deadline:
+                        raise TimeoutError(
+                            f"Turn timed out after {max_wait_s:.0f}s "
+                            f"(loop={expected_loop_id or '?'})"
+                        )
                     if not progress_seen and time.monotonic() - turn_read_started > 30.0:
                         logger.warning(
                             "No daemon stream progress after %.0fs (loop=%s, "
@@ -406,7 +432,16 @@ class DaemonSession:
                     if mode == "custom" and isinstance(data, dict):
                         custom_type = str(data.get("type", "")).strip()
                         if custom_type in _TURN_END_CUSTOM_TYPES:
-                            self.last_turn_end_state = "completed"
+                            # stream.end may be scope-tagged; treat blank / turn as end.
+                            if custom_type == "soothe.stream.end":
+                                scope = str(data.get("scope") or "turn").strip().lower()
+                                if scope not in {"", "turn"}:
+                                    continue
+                            self.last_turn_end_state = (
+                                "stream_end"
+                                if custom_type == "soothe.stream.end"
+                                else "completed"
+                            )
                             async for chunk in self._drain_stream_events_after_idle(
                                 expected_loop_id=expected_loop_id,
                             ):

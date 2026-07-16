@@ -37,8 +37,8 @@ sync: ## Sync runtime dependencies with uv
 	uv sync
 	@echo "✓ Dependencies synced"
 
-sync-dev: ## Sync runtime + dev (+ image) extras
-	uv sync --extra dev --extra image
+sync-dev: ## Sync runtime + dev extras
+	uv sync --extra dev
 	@echo "✓ Dev dependencies synced"
 
 install: sync-dev ## Alias for sync-dev

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Minimal: one prompt, wait for the agent, print what it said."""
+"""Minimal: one prompt, wait for the reply, print what it said.
+
+Defaults to fast ``text_completion``. Set ``SOOTHE_EXAMPLE_AGENT=1`` for the
+full agent path.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +11,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from _common import StreamPrinter, daemon_url
+from _common import StreamPrinter, daemon_url, fallback_completion_text, send_and_consume
 
 from soothe_client.appkit import DaemonSession
 
@@ -19,21 +23,12 @@ async def main() -> None:
     print(f"loop={session.loop_id}", flush=True)
 
     printer = StreamPrinter()
-    await session.send_turn("Say hello in one short sentence.")
-    async for namespace, mode, data in session.iter_turn_chunks():
-        printer.feed(namespace, mode, data)
-    printer.finish()
+    await send_and_consume(session, "Say hello in one short sentence.", printer)
 
     if not printer.had_output:
-        text = await session.fetch_goal_completion_text(session.loop_id or "")
+        text = await fallback_completion_text(session)
         if text:
             print(text)
-        else:
-            for row in reversed(await session.fetch_conversation_log(session.loop_id or "")):
-                content = row.get("content")
-                if isinstance(content, str) and content.strip():
-                    print(content)
-                    break
 
     await session.close()
 

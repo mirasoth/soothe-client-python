@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Stream a turn: print agent text as it arrives (no duplicate snapshots)."""
+"""Stream a turn: print reply text as it arrives (no duplicate snapshots).
+
+Defaults to fast ``text_completion``. Set ``SOOTHE_EXAMPLE_AGENT=1`` for the
+full agent path.
+"""
 
 from __future__ import annotations
 
@@ -8,7 +12,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from _common import StreamPrinter, daemon_url
+from _common import StreamPrinter, daemon_url, send_and_consume
 
 from soothe_client.appkit import DaemonSession
 
@@ -24,10 +28,7 @@ async def main() -> None:
     print(f"# connected loop={session.loop_id}\n", flush=True)
 
     printer = StreamPrinter()
-    await session.send_turn(prompt)
-    async for namespace, mode, data in session.iter_turn_chunks():
-        printer.feed(namespace, mode, data)
-    printer.finish()
+    await send_and_consume(session, prompt, printer)
     print("# done", flush=True)
     await session.close()
 

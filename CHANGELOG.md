@@ -15,9 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Require `soothe-sdk>=0.8.1` (canonical `soothe_sdk.wire` / `soothe_sdk.paths`)
 - Public package docs/README are end-user facing (no internal design-doc identifiers)
+- `pillow` is a default dependency (removed optional `[image]` extra)
 
 ### Fixed
 - `WebSocketManagedClient.send_message` coerces flat appkit payloads (`loop_input`, `command_request`) to protocol-1 envelopes so TurnRunner works against envelope-only daemons
+- `DaemonSession.iter_turn_chunks` ends on turn-scoped `soothe.stream.end` and supports absolute `max_wait_s` timeouts
+- Clearer handshake errors when the daemon is `stopped`, `error`, or `degraded`
 
 ## [0.9.4] - 2026-07-15
 

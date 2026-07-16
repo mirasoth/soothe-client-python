@@ -30,7 +30,7 @@ jobs:
         run: uv python install ${{ matrix.python-version }}
 
       - name: Sync dependencies
-        run: uv sync --extra dev --extra image
+        run: uv sync --extra dev
 
       - name: Format check
         run: make format-check
