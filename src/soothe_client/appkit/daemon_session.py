@@ -438,9 +438,7 @@ class DaemonSession:
                                 if scope not in {"", "turn"}:
                                     continue
                             self.last_turn_end_state = (
-                                "stream_end"
-                                if custom_type == "soothe.stream.end"
-                                else "completed"
+                                "stream_end" if custom_type == "soothe.stream.end" else "completed"
                             )
                             async for chunk in self._drain_stream_events_after_idle(
                                 expected_loop_id=expected_loop_id,
