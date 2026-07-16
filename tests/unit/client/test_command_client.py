@@ -1,4 +1,4 @@
-"""Unit tests for WsCommandClient protocol-1 wire format (RFC-450 §5, IG-522 Phase 6).
+"""Unit tests for AsyncCommandClient protocol-1 wire format (RFC-450 §5, IG-522 Phase 6).
 
 Covers the migration from the old ``{type:'command', command:..., payload:...}``
 format to the unified protocol-1 envelope:
@@ -23,7 +23,7 @@ from uuid import UUID
 
 import pytest
 
-from soothe_client.ws_command_client import WsCommandClient
+from soothe_client.command_client import AsyncCommandClient
 
 # ---------------------------------------------------------------------------
 # Helpers: fake a websockets.connect async context manager
@@ -31,7 +31,7 @@ from soothe_client.ws_command_client import WsCommandClient
 
 
 class _FakeWebSocket:
-    """Minimal stand-in for a websockets Connection used by WsCommandClient."""
+    """Minimal stand-in for a websockets Connection used by AsyncCommandClient."""
 
     def __init__(self, *, send_captured: list[str] | None = None) -> None:
         self._send_captured = send_captured if send_captured is not None else []
@@ -113,7 +113,7 @@ async def test_send_command_performs_connection_handshake_before_request() -> No
     """_send_command sends connection_init and waits for connection_ack first."""
     fake_ws = _FakeWebSocket()
     _install_handshake_then_response_recv(fake_ws, result={"ok": True})
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         result = await client._send_command("autopilot_status")
@@ -143,7 +143,7 @@ async def test_send_command_uses_protocol1_request_envelope() -> None:
         )
 
     fake_ws.recv = AsyncMock(side_effect=recv)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         result = await client._send_command("autopilot_status", {"filter": "all"})
@@ -167,7 +167,7 @@ async def test_send_command_no_old_command_key() -> None:
     """The old 'command' key is gone; 'method' is used instead (IG-522 Phase 6)."""
     fake_ws = _FakeWebSocket()
     _install_handshake_then_response_recv(fake_ws)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         await client._send_command("autopilot_status")
@@ -186,7 +186,7 @@ async def test_send_command_default_payload_is_empty_dict() -> None:
     """Omitting payload still produces a valid request with no extra param fields."""
     fake_ws = _FakeWebSocket()
     _install_handshake_then_response_recv(fake_ws)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         await client._send_command("cron_list")
@@ -207,7 +207,7 @@ async def test_send_command_returns_result_from_response_envelope() -> None:
     """A {type:'response', result:...} envelope returns its result dict."""
     fake_ws = _FakeWebSocket()
     _install_handshake_then_response_recv(fake_ws, result={"goals": ["g1", "g2"]})
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         result = await client._send_command("autopilot_list_goals")
@@ -237,7 +237,7 @@ async def test_send_command_error_envelope_raises_runtimeerror() -> None:
         )
 
     fake_ws.recv = AsyncMock(side_effect=recv)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         with pytest.raises(RuntimeError) as exc_info:
@@ -266,7 +266,7 @@ async def test_send_command_error_envelope_without_data() -> None:
         )
 
     fake_ws.recv = AsyncMock(side_effect=recv)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         with pytest.raises(RuntimeError) as exc_info:
@@ -294,7 +294,7 @@ async def test_send_command_error_form_propagated() -> None:
         )
 
     fake_ws.recv = AsyncMock(side_effect=recv)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         with pytest.raises(RuntimeError) as exc_info:
@@ -326,7 +326,7 @@ async def test_send_command_correlates_response_by_id() -> None:
         )
 
     fake_ws.recv = AsyncMock(side_effect=recv)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         result = await client._send_command("autopilot_status")
@@ -354,7 +354,7 @@ async def test_send_command_skips_unrelated_message_types() -> None:
         )
 
     fake_ws.recv = AsyncMock(side_effect=recv)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         result = await client._send_command("autopilot_status")
@@ -375,7 +375,7 @@ async def test_send_command_invalid_json_raises_runtimeerror() -> None:
         return "not json"
 
     fake_ws.recv = AsyncMock(side_effect=recv)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         with pytest.raises(RuntimeError):
@@ -391,7 +391,7 @@ async def test_send_command_uses_encode_envelope_not_raw_json_dumps() -> None:
     """The sent frame is produced by encode_envelope (compact, proto-1 compliant)."""
     fake_ws = _FakeWebSocket()
     _install_handshake_then_response_recv(fake_ws)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         await client._send_command("autopilot_status")
@@ -415,7 +415,7 @@ async def test_send_command_uses_encode_envelope_not_raw_json_dumps() -> None:
 
 async def test_autopilot_status_delegates_to_send_command() -> None:
     """autopilot_status() calls _send_command('autopilot_status') with no payload."""
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
     captured: list[tuple[str, dict[str, Any] | None]] = []
 
     async def fake_send(command_type, payload=None):
@@ -432,7 +432,7 @@ async def test_autopilot_status_delegates_to_send_command() -> None:
 
 async def test_autopilot_submit_sends_correct_method_and_payload() -> None:
     """autopilot_submit() delegates with method='autopilot_submit' and its payload."""
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
     captured: list[tuple[str, dict[str, Any] | None]] = []
 
     async def fake_send(command_type, payload=None):
@@ -451,7 +451,7 @@ async def test_autopilot_submit_sends_correct_method_and_payload() -> None:
 
 async def test_cron_add_delegates_to_send_command() -> None:
     """cron_add() delegates with method='cron_add' and its payload."""
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
     captured: list[tuple[str, dict[str, Any] | None]] = []
 
     async def fake_send(command_type, payload=None):
@@ -470,7 +470,7 @@ async def test_cron_add_delegates_to_send_command() -> None:
 
 async def test_memory_stats_delegates_to_send_command() -> None:
     """memory_stats() delegates with method='memory_stats' and mode param."""
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
     captured: list[tuple[str, dict[str, Any] | None]] = []
 
     async def fake_send(command_type, payload=None):
@@ -510,7 +510,7 @@ async def test_error_envelope_propagates_as_runtime_error() -> None:
         )
 
     fake_ws.recv = AsyncMock(side_effect=recv)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         with pytest.raises(RuntimeError) as exc_info:
@@ -540,7 +540,7 @@ async def test_request_id_is_unique_uuid4_per_call() -> None:
         return json.dumps({"proto": "1", "type": "response", "result": {}, "id": sent["id"]})
 
     fake_ws.recv = AsyncMock(side_effect=recv)
-    client = WsCommandClient("ws://localhost:8765/")
+    client = AsyncCommandClient("ws://localhost:8765/")
 
     with _patch_connect(fake_ws):
         await client._send_command("autopilot_status")

@@ -2,23 +2,29 @@
 
 from __future__ import annotations
 
-import warnings
+import pytest
 
 import soothe_client as root
 from soothe_client import appkit
 
 
-def test_root_all_excludes_protocol_params() -> None:
-    assert "LoopInputParams" not in root.__all__
-    assert "AutopilotCancelGoalParams" not in root.__all__
-    assert "VerbosityLevel" not in root.__all__
+def test_root_all_excludes_protocol_params_and_legacy_names() -> None:
+    for name in (
+        "LoopInputParams",
+        "AutopilotCancelGoalParams",
+        "VerbosityLevel",
+        "WsCommandClient",
+        "SyncWsCommandClient",
+        "ws_command_client_from_config",
+        "async_ws_command_client_from_config",
+    ):
+        assert name not in root.__all__
+        assert not hasattr(root, name)
 
 
 def test_root_all_includes_core_surface() -> None:
     for name in (
         "WebSocketClient",
-        "WsCommandClient",
-        "SyncWsCommandClient",
         "AsyncCommandClient",
         "CommandClient",
         "command_client_from_config",
@@ -31,19 +37,9 @@ def test_root_all_includes_core_surface() -> None:
         assert getattr(root, name) is not None
 
 
-def test_command_client_aliases() -> None:
-    assert root.AsyncCommandClient is root.WsCommandClient
-    assert root.CommandClient is root.SyncWsCommandClient
-    assert root.command_client_from_config is root.ws_command_client_from_config
-    assert root.async_command_client_from_config is root.async_ws_command_client_from_config
-
-
-def test_legacy_params_via_getattr_warn() -> None:
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        cls = root.LoopInputParams
-    assert cls.__name__ == "LoopInputParams"
-    assert any(issubclass(w.category, DeprecationWarning) for w in caught)
+def test_legacy_params_not_importable_from_root() -> None:
+    with pytest.raises(ImportError):
+        from soothe_client import LoopInputParams  # noqa: F401
 
 
 def test_appkit_all_is_slim() -> None:

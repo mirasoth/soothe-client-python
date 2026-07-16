@@ -1,4 +1,4 @@
-"""Job IPC integration tests via WsCommandClient (RFC-228)."""
+"""Job IPC integration tests via AsyncCommandClient (RFC-228)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from soothe_client.ws_command_client import WsCommandClient
+from soothe_client.command_client import AsyncCommandClient
 
 pytestmark = pytest.mark.integration
 
@@ -17,30 +17,26 @@ async def test_job_create_status_cancel(
     require_daemon: str,
     workspace_dir: Path,
 ) -> None:
-    client = WsCommandClient(ws_url=daemon_url)
-    try:
-        created = await client.job_create(
-            "echo integration-smoke",
-            workspace=str(workspace_dir),
-            autonomous=False,
-            max_iterations=1,
-        )
-        job_id = created.get("job_id") or created.get("id")
-        assert job_id, f"job_create missing id: {created}"
+    client = AsyncCommandClient(ws_url=daemon_url)
+    created = await client.job_create(
+        "echo integration-smoke",
+        workspace=str(workspace_dir),
+        autonomous=False,
+        max_iterations=1,
+    )
+    job_id = created.get("job_id") or created.get("id")
+    assert job_id, f"job_create missing id: {created}"
 
-        status = await client.job_status(str(job_id))
-        assert status.get("job_id") == job_id or status.get("id") == job_id or "status" in status
+    status = await client.job_status(str(job_id))
+    assert status.get("job_id") == job_id or status.get("id") == job_id or "status" in status
 
-        cancelled = await client.job_cancel(str(job_id))
-        assert isinstance(cancelled, dict)
-    finally:
-        # WsCommandClient methods open short-lived sockets; nothing to close.
-        pass
+    cancelled = await client.job_cancel(str(job_id))
+    assert isinstance(cancelled, dict)
 
 
 @pytest.mark.asyncio
 async def test_autopilot_status(daemon_url: str, require_daemon: str) -> None:
-    client = WsCommandClient(ws_url=daemon_url)
+    client = AsyncCommandClient(ws_url=daemon_url)
     try:
         status = await client.autopilot_status()
     except RuntimeError as exc:

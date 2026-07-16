@@ -37,12 +37,12 @@ More patterns: [`examples/`](examples/) (hello → streaming → multi-turn → 
 | Need | Use |
 |------|-----|
 | One conversation, stream replies | `DaemonSession` (`soothe_client.appkit`) |
-| Jobs / cron (async) | `AsyncCommandClient` (alias of `WsCommandClient`) |
-| Jobs / cron (scripts / sync) | `CommandClient` (alias of `SyncWsCommandClient`) |
+| Jobs / cron (async) | `AsyncCommandClient` |
+| Jobs / cron (scripts / sync) | `CommandClient` |
 | Raw WebSocket / custom RPCs | `WebSocketClient` |
 | Many users / HTTP backend | `ConnectionPool` + `TurnRunner` |
 
-Wire request param models live in `soothe_client.protocol_params` (not at package root).
+Wire request param models: `soothe_client.protocol_params`.
 
 ## Develop
 

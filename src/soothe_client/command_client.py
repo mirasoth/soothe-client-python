@@ -1,8 +1,6 @@
-"""WebSocket command client for daemon command endpoints.
+"""Async and sync daemon command clients (jobs, autopilot, cron).
 
-Provides synchronous and async clients for sending commands over WebSocket
-and receiving responses. Replaces HTTP REST clients for autopilot, cron,
-and memory profiling operations.
+``AsyncCommandClient`` for asyncio; ``CommandClient`` for scripts/CLI.
 """
 
 from __future__ import annotations
@@ -162,14 +160,11 @@ _MEMORY_COMMANDS = {
 }
 
 
-class WsCommandClient:
+class AsyncCommandClient:
     """Async client for one-shot daemon RPCs (jobs, autopilot, cron).
 
     Prefer this for asyncio apps. For scripts/CLI without an event loop, use
-    ``SyncWsCommandClient`` (alias ``CommandClient``). For streaming agent
-    turns, use ``DaemonSession`` instead.
-
-    Preferred community alias: ``AsyncCommandClient``.
+    ``CommandClient``. For streaming agent turns, use ``DaemonSession`` instead.
 
     Job lifecycle uses ``job_*`` methods. Autopilot goal helpers use
     ``autopilot_*``. ``job_cancel`` cancels a root job and its descendants;
@@ -177,7 +172,7 @@ class WsCommandClient:
 
     Example::
 
-        client = WsCommandClient("ws://127.0.0.1:8765")
+        client = AsyncCommandClient("ws://127.0.0.1:8765")
         created = await client.job_create("Summarize the README")
         await client.job_cancel(created["job_id"])
 
@@ -416,11 +411,10 @@ class WsCommandClient:
         return await self._send_command("memory_stats", {"mode": mode})
 
 
-class SyncWsCommandClient:
-    """Synchronous wrapper around ``WsCommandClient`` for scripts and CLI.
+class CommandClient:
+    """Synchronous wrapper around ``AsyncCommandClient`` for scripts and CLI.
 
-    Preferred community alias: ``CommandClient``. Each method opens a short
-    WebSocket RPC (same behavior as the async client).
+    Each method opens a short-lived WebSocket RPC (same behavior as async).
 
     Args:
         ws_url: Daemon WebSocket URL.
@@ -428,7 +422,7 @@ class SyncWsCommandClient:
     """
 
     def __init__(self, ws_url: str, *, timeout: float = 30.0) -> None:
-        self._client = WsCommandClient(ws_url, timeout=timeout)
+        self._client = AsyncCommandClient(ws_url, timeout=timeout)
 
     def _run_async(self, coro: Any) -> Any:
         """Run an async coroutine from sync code."""
@@ -581,38 +575,21 @@ class SyncWsCommandClient:
         return cast(dict[str, Any], self._run_async(self._client.memory_stats(mode)))
 
 
-def ws_command_client_from_config(cfg: Any) -> SyncWsCommandClient:
-    """Build a sync command client from soothe/CLI config (host/port).
-
-    Preferred alias: ``command_client_from_config``.
-    """
+def command_client_from_config(cfg: Any) -> CommandClient:
+    """Build a sync command client from soothe/CLI config (host/port)."""
     ws_url = websocket_url_from_config(cfg)
-    return SyncWsCommandClient(ws_url)
+    return CommandClient(ws_url)
 
 
-def async_ws_command_client_from_config(cfg: Any) -> WsCommandClient:
-    """Build an async command client from soothe/CLI config (host/port).
-
-    Preferred alias: ``async_command_client_from_config``.
-    """
+def async_command_client_from_config(cfg: Any) -> AsyncCommandClient:
+    """Build an async command client from soothe/CLI config (host/port)."""
     ws_url = websocket_url_from_config(cfg)
-    return WsCommandClient(ws_url)
+    return AsyncCommandClient(ws_url)
 
 
 __all__ = [
-    "WsCommandClient",
-    "SyncWsCommandClient",
     "AsyncCommandClient",
     "CommandClient",
-    "ws_command_client_from_config",
-    "async_ws_command_client_from_config",
     "command_client_from_config",
     "async_command_client_from_config",
 ]
-
-
-# Preferred community names (aliases; wire method names unchanged).
-AsyncCommandClient = WsCommandClient
-CommandClient = SyncWsCommandClient
-command_client_from_config = ws_command_client_from_config
-async_command_client_from_config = async_ws_command_client_from_config

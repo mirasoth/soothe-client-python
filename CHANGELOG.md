@@ -5,6 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-07-17
+
+### Changed
+- **Breaking:** command clients are `AsyncCommandClient` / `CommandClient` (module `soothe_client.command_client`); removed `WsCommandClient`, `SyncWsCommandClient`, and `*_ws_command_client_from_config` aliases
+- **Breaking:** removed root-package re-export of `*Params` (including deprecated `__getattr__`); import from `soothe_client.protocol_params`
+
 ## [0.9.10] - 2026-07-16
 
 ### Added
