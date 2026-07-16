@@ -23,7 +23,7 @@ from soothe_client.stream_terminal import (
     is_turn_end_custom_data,
     is_turn_progress_chunk,
 )
-from soothe_client.turn_boundary import frame_seq, frame_turn_id
+from soothe_client.turn_boundary import frame_seq, frame_turn_id, parse_turn_generation
 from soothe_client.websocket import WebSocketClient
 
 logger = logging.getLogger(__name__)
@@ -392,13 +392,19 @@ class DaemonSession:
                     if ev_seq is not None and last_end_seq > 0 and ev_seq <= last_end_seq:
                         continue
 
-                    # IG-659 phases 1–2: drop mismatched turn_id once bound.
+                    # Drop mismatched turn_id once bound — except status=running,
+                    # which may rebind to a newer generation (pre-admit early
+                    # running can briefly carry a stale or empty turn_id).
                     ev_turn_id = frame_turn_id(event)
+                    is_running_status = (
+                        event_type == "status" and str(event.get("state") or "") == "running"
+                    )
                     if (
                         expected_turn_id
                         and ev_turn_id
                         and ev_turn_id != expected_turn_id
                         and event_type in {"event", "status"}
+                        and not is_running_status
                     ):
                         logger.debug(
                             "Ignoring mismatched turn_id frame type=%s got=%s expected=%s",
@@ -426,8 +432,18 @@ class DaemonSession:
                             progress_seen = True
                             status_turn = frame_turn_id(event)
                             if status_turn:
-                                expected_turn_id = status_turn
-                                self._expected_turn_id = status_turn
+                                new_gen = parse_turn_generation(status_turn)
+                                old_gen = parse_turn_generation(expected_turn_id)
+                                if expected_turn_id is None or (
+                                    new_gen is not None and (old_gen is None or new_gen >= old_gen)
+                                ):
+                                    if expected_turn_id and status_turn != expected_turn_id:
+                                        # Successor turn admitted while this reader
+                                        # still held a stale/early binding.
+                                        stream_payload_seen = False
+                                        turn_progress_seen = False
+                                    expected_turn_id = status_turn
+                                    self._expected_turn_id = status_turn
                         elif query_started and state == "stopped":
                             self.last_turn_end_state = state
                             if ev_seq is not None:

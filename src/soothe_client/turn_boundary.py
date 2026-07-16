@@ -18,6 +18,19 @@ def format_turn_id(loop_id: str, generation: int) -> str:
     return f"{lid}:{gen}"
 
 
+def parse_turn_generation(turn_id: str | None) -> int | None:
+    """Extract generation int from ``turn_id``, or None if malformed."""
+    raw = str(turn_id or "").strip()
+    if not raw or ":" not in raw:
+        return None
+    suffix = raw.rsplit(":", 1)[-1]
+    try:
+        gen = int(suffix)
+    except ValueError:
+        return None
+    return gen if gen > 0 else None
+
+
 def frame_turn_id(frame: dict[str, Any] | None) -> str | None:
     """Return ``turn_id`` from a status/event frame or nested custom data."""
     if not isinstance(frame, dict):
@@ -51,4 +64,5 @@ __all__ = [
     "format_turn_id",
     "frame_seq",
     "frame_turn_id",
+    "parse_turn_generation",
 ]

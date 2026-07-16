@@ -367,6 +367,53 @@ async def test_iter_turn_chunks_ignores_mismatched_turn_id() -> None:
 
 
 @pytest.mark.asyncio
+async def test_iter_turn_chunks_rebinds_on_newer_running_turn_id() -> None:
+    """Stale/early running :1 must not lock out the admitted turn :2."""
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
+    session._loop_id = "L1"
+    session._last_turn_end_seq = 0
+
+    events = [
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:1", "seq": 1},
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:2", "seq": 2},
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "turn_id": "L1:2",
+            "seq": 3,
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.cognition.strange_loop.step.started", "step_id": "S1"},
+        },
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "turn_id": "L1:2",
+            "seq": 4,
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L1:2"},
+        },
+        None,
+    ]
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=events),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    chunks = [c async for c in session.iter_turn_chunks()]
+    assert [c[2].get("type") for c in chunks] == [
+        "soothe.cognition.strange_loop.step.started",
+        "soothe.stream.end",
+    ]
+    assert session._expected_turn_id == "L1:2"
+    assert session.last_turn_end_state == "stream_end"
+
+
+@pytest.mark.asyncio
 async def test_iter_turn_chunks_drops_seq_at_or_below_prior_end() -> None:
     """Monotonic seq floor drops late frames from the prior turn."""
     session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
