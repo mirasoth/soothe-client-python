@@ -1,4 +1,8 @@
-"""WebSocket helper functions for daemon communication."""
+"""Small WebSocket helpers for CLI and scripts (status, fetch, one-shot RPC).
+
+For interactive turns use ``DaemonSession``. For jobs/cron use
+``WsCommandClient`` / ``CommandClient``.
+"""
 
 from __future__ import annotations
 

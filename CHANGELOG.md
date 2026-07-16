@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `autopilot_cancel_all` RPC helper to cancel every open (non-terminal) goal in one call
+- Preferred aliases: `AsyncCommandClient`, `CommandClient`, `command_client_from_config`, `async_command_client_from_config`
+
+### Changed
+- Slimmed package and `appkit` public exports; wire `*Params` models live in `soothe_client.protocol_params` (root import still works with a deprecation warning)
 
 ### Fixed
 - Rebind `expected_turn_id` when a newer `status=running` arrives so a stale/early prior generation cannot drop the active turn

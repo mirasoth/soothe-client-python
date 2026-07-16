@@ -1,7 +1,8 @@
-"""Turn / stream boundary helpers (IG-659).
+"""Internal turn / stream boundary helpers.
 
-``turn_id`` correlates a user turn across status, events, and terminals.
-``seq`` is a daemon-assigned monotonic counter per loop for drop-stale filtering.
+Used by ``DaemonSession`` and ``WebSocketClient`` for ``turn_id`` / ``seq``
+filtering. Not part of the community public API — import only if you are
+extending stream handling.
 """
 
 from __future__ import annotations

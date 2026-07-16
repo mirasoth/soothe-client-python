@@ -37,7 +37,21 @@ StreamDeliveryResolver = Callable[[], str]
 
 
 class DaemonSession:
-    """Daemon-backed loop session with stream + RPC sockets."""
+    """One conversation with a daemon loop: connect, send turns, stream chunks.
+
+    Owns a subscribed stream WebSocket plus an RPC sidecar so metadata calls
+    do not starve loop events. Typical usage::
+
+        session = DaemonSession("ws://127.0.0.1:8765")
+        await session.connect()
+        await session.send_turn("Hello")
+        async for _ns, mode, data in session.iter_turn_chunks():
+            ...
+        await session.close()
+
+    Advanced: ``early_drop_fn`` / ``stats_factory`` customize stream filtering
+    and metrics for product UIs; most apps leave the defaults.
+    """
 
     def __init__(
         self,
@@ -67,7 +81,7 @@ class DaemonSession:
         self.last_turn_end_state: str | None = None
         self.last_turn_cancellation_seen: bool = False
         self.last_turn_error_message: str | None = None
-        # IG-659: last completed turn's seq floor (drop stale prior-turn frames).
+        # Last completed turn's seq floor (drop stale prior-turn frames).
         self._last_turn_end_seq: int = 0
         self._expected_turn_id: str | None = None
 
@@ -108,7 +122,11 @@ class DaemonSession:
         )
 
     async def connect(self, *, resume_loop_id: str | None = None) -> dict[str, Any]:
-        """Connect and bootstrap a daemon loop session."""
+        """Open the stream socket and bootstrap (or resume) a loop session.
+
+        Returns:
+            Status event from the daemon (includes ``loop_id`` on success).
+        """
         await connect_websocket_with_retries(self._client)
         return await self._bootstrap_loop(resume_loop_id=resume_loop_id)
 
@@ -182,7 +200,7 @@ class DaemonSession:
         await self._bootstrap_loop(resume_loop_id=resume_loop_id)
 
     async def close(self, *, handshake_timeout: float = 2.0) -> None:
-        """Close stream and RPC sockets (idempotent)."""
+        """Close stream and RPC sockets. Safe to call more than once."""
         if self._closed:
             return
         self._closed = True
@@ -219,7 +237,11 @@ class DaemonSession:
         clarification_answers: list[str] | None = None,
         intent_hint: str | None = None,
     ) -> None:
-        """Send a new user turn to the daemon."""
+        """Send a user message on the active loop (start of a turn).
+
+        Call ``iter_turn_chunks`` afterward to consume the streamed reply.
+        Requires ``connect()`` (or another bootstrap) first.
+        """
         if not self._loop_id:
             raise RuntimeError("No active loop session")
         await self._client.send_input(
@@ -303,13 +325,15 @@ class DaemonSession:
         *,
         max_wait_s: float | None = None,
     ) -> AsyncIterator[tuple[tuple[Any, ...], str, Any]]:
-        """Yield ``(namespace, mode, data)`` chunks for the active daemon turn.
+        """Yield ``(namespace, mode, data)`` stream chunks until the turn ends.
+
+        Handles idle timeout, post-idle drain, and turn boundary filtering.
+        Call after ``send_turn``.
 
         Args:
             max_wait_s: Optional absolute deadline for the whole turn. When set,
                 raises ``TimeoutError`` if the daemon never emits a turn-end
-                signal in time (idle after payload, stopped, stream.end, or
-                strange_loop.completed).
+                signal in time.
         """
         self.turn_event_stats = self._new_turn_stats()
         self.last_turn_end_state = None

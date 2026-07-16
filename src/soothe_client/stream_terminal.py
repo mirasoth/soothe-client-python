@@ -1,7 +1,7 @@
-"""Shared stream/turn terminal frame helpers for WebSocket and DaemonSession.
+"""Internal stream/turn terminal frame helpers.
 
-Keeps peel-at-turn-start and turn-end detection on one vocabulary so leftover
-prior-goal terminals cannot blank the next TUI query.
+Used by ``WebSocketClient`` and ``DaemonSession`` so leftover prior-turn
+terminals cannot blank the next query. Not part of the community public API.
 """
 
 from __future__ import annotations

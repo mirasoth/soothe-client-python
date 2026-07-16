@@ -8,7 +8,8 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from soothe_client.appkit import DaemonSession, should_drop_stream_chunk_early
+from soothe_client.appkit import DaemonSession
+from soothe_client.appkit.chunk_filter import should_drop_stream_chunk_early
 from soothe_client.helpers import fetch_loop_cards, fetch_loop_history, fetch_loop_messages
 
 

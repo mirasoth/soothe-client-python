@@ -9,15 +9,16 @@ from typing import Any
 import pytest
 
 from soothe_client.appkit import (
-    PRIORITY_HIGH,
-    PRIORITY_LOW,
     ErrQueryBusy,
     QueryGate,
+)
+from soothe_client.appkit.events import is_loop_scoped_event, unwrap_next
+from soothe_client.appkit.turn import (
+    PRIORITY_HIGH,
+    PRIORITY_LOW,
     TurnApplyBatcher,
     TurnEventPipeline,
-    is_loop_scoped_event,
     run_turn_pipeline,
-    unwrap_next,
 )
 
 

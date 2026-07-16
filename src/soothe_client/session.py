@@ -1,4 +1,8 @@
-"""Shared WebSocket session bootstrap for CLI headless and TUI."""
+"""Session bootstrap helpers for CLI, TUI, and appkit.
+
+Prefer ``DaemonSession`` for application code. These helpers are the lower-level
+connect + loop-subscribe steps used when you own the ``WebSocketClient``.
+"""
 
 from __future__ import annotations
 
@@ -22,14 +26,7 @@ _LEGACY_LOOP_AUTOPILOT_MODE = "solo"
 
 
 async def connect_websocket_with_retries(client: Any) -> None:
-    """Connect to the daemon with bounded retries for cold-start races.
-
-    Args:
-        client: WebSocketClient instance.
-
-    Raises:
-        ConnectionError: If connection fails after all retries.
-    """
+    """Connect a ``WebSocketClient`` with retries (daemon cold-start safe)."""
     last_error: OSError | ConnectionError | TimeoutError | None = None
     for attempt in range(_CONNECT_RETRY_COUNT):
         try:

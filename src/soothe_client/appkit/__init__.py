@@ -1,13 +1,16 @@
 """Application helpers built on WebSocketClient.
 
-Product-agnostic building blocks for agent UIs and backends:
+Primary building blocks for agent UIs and backends:
 
 - ``DaemonSession`` — dual-socket loop session + streamed turns
 - ``ConnectionPool`` / ``TurnRunner`` — multi-session turn execution
 - ``QueryGate`` — one-in-flight query per session
-- ``EventClassifier`` / ``extract_thinking_step`` — stream → deliverable mapping
+- ``EventClassifier`` — stream → deliverable mapping
 - ``SSEBroadcaster`` — drop-on-full fan-out to subscribers
 - ``SessionStore`` — persistence seam (Protocol)
+
+Advanced stream/pipeline plumbing lives in submodules
+(``events``, ``chunk_filter``, ``turn``, ``managed_client``).
 """
 
 from __future__ import annotations
@@ -18,7 +21,6 @@ from soothe_client.appkit.attachments import (
     compact_image_attachment,
 )
 from soothe_client.appkit.broadcaster import SSEBroadcaster, SSEEvent
-from soothe_client.appkit.chunk_filter import should_drop_stream_chunk_early
 from soothe_client.appkit.classifier import (
     EVENT_FINAL_REPORT,
     ChatEventResult,
@@ -26,17 +28,7 @@ from soothe_client.appkit.classifier import (
     ClassifierConfig,
     EventClassifier,
 )
-from soothe_client.appkit.daemon_session import DEFAULT_POST_IDLE_DRAIN_S, DaemonSession
-from soothe_client.appkit.events import is_loop_scoped_event, unwrap_next
-from soothe_client.appkit.managed_client import (
-    BootstrapFunc,
-    ClientFactory,
-    ManagedClient,
-    WebSocketManagedClient,
-    default_bootstrap_func,
-    default_client_factory,
-)
-from soothe_client.appkit.observability import TurnEventStats
+from soothe_client.appkit.daemon_session import DaemonSession
 from soothe_client.appkit.pool import (
     ConnectionPool,
     ErrPoolExhausted,
@@ -49,15 +41,6 @@ from soothe_client.appkit.session_store import SessionEntry, SessionMessage, Ses
 from soothe_client.appkit.thinking_step import (
     DEFAULT_THINKING_STEP_EVENTS,
     extract_thinking_step,
-)
-from soothe_client.appkit.turn import (
-    PRIORITY_CRITICAL,
-    PRIORITY_HIGH,
-    PRIORITY_LOW,
-    PRIORITY_NORMAL,
-    TurnApplyBatcher,
-    TurnEventPipeline,
-    run_turn_pipeline,
 )
 from soothe_client.appkit.turn_runner import (
     STREAM_CLOSE_FAIL,
@@ -77,13 +60,13 @@ from soothe_client.appkit.turn_runner import (
 )
 
 __all__ = [
-    "DEFAULT_POST_IDLE_DRAIN_S",
     "DEFAULT_THINKING_STEP_EVENTS",
     "STREAM_CLOSE_FAIL",
     "STREAM_CLOSE_SOFT_COMPLETE",
     "Attachment",
-    "BootstrapFunc",
-    "ClientFactory",
+    "ChatEventResult",
+    "ChatEventTerminal",
+    "ClassifierConfig",
     "CompactImageOptions",
     "ConnectionPool",
     "DaemonSession",
@@ -92,18 +75,10 @@ __all__ = [
     "ErrPoolExhausted",
     "ErrQueryBusy",
     "ErrQueryTimeout",
-    "ChatEventResult",
-    "ChatEventTerminal",
-    "ClassifierConfig",
     "EventClassifier",
     "InputOpts",
-    "ManagedClient",
     "OnComplete",
     "OnError",
-    "PRIORITY_CRITICAL",
-    "PRIORITY_HIGH",
-    "PRIORITY_LOW",
-    "PRIORITY_NORMAL",
     "PoolConfig",
     "PooledConn",
     "QueryGate",
@@ -114,22 +89,12 @@ __all__ = [
     "SessionStore",
     "StreamClosePolicy",
     "TimeoutPolicy",
-    "TurnApplyBatcher",
     "TurnConfig",
-    "TurnEventPipeline",
-    "TurnEventStats",
     "TurnRunner",
-    "WebSocketManagedClient",
     "compact_attachments",
     "compact_image_attachment",
-    "default_bootstrap_func",
-    "default_client_factory",
     "default_pool_config",
     "extract_thinking_step",
     "idle_timeout_for_turn",
     "input_message_for_loop",
-    "is_loop_scoped_event",
-    "run_turn_pipeline",
-    "should_drop_stream_chunk_early",
-    "unwrap_next",
 ]

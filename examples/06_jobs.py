@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Background jobs: create → status → cancel (+ autopilot status when available)."""
+"""Background jobs: create → status → cancel via the preferred job_* API."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ from pathlib import Path
 
 from _common import daemon_url
 
-from soothe_client.ws_command_client import WsCommandClient
+from soothe_client import AsyncCommandClient
 
 
 async def main() -> None:
     workspace = Path(tempfile.mkdtemp(prefix="soothe-ex-job-"))
-    client = WsCommandClient(ws_url=daemon_url(), timeout=30.0)
+    client = AsyncCommandClient(ws_url=daemon_url(), timeout=30.0)
 
     try:
         status = await client.autopilot_status()
@@ -24,7 +24,7 @@ async def main() -> None:
         )
     except RuntimeError as exc:
         print(
-            "autopilot_status skipped (daemon needs a restart with protocol-1 autopilot handlers):",
+            "autopilot_status skipped (daemon needs protocol-1 autopilot handlers):",
             exc,
         )
 

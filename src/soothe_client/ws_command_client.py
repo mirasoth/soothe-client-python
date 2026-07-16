@@ -163,19 +163,27 @@ _MEMORY_COMMANDS = {
 
 
 class WsCommandClient:
-    """Async WebSocket client for daemon command endpoints.
+    """Async client for one-shot daemon RPCs (jobs, autopilot, cron).
 
-    Connects to daemon WebSocket, sends command messages, and waits for
-    response messages with a request/response pattern.
+    Prefer this for asyncio apps. For scripts/CLI without an event loop, use
+    ``SyncWsCommandClient`` (alias ``CommandClient``). For streaming agent
+    turns, use ``DaemonSession`` instead.
 
-    Usage:
-        client = WsCommandClient(ws_url)
-        result = await client.autopilot_status()
-        result = await client.cron_add("in 1 hour remind me to deploy")
+    Preferred community alias: ``AsyncCommandClient``.
+
+    Job lifecycle uses ``job_*`` methods. Autopilot goal helpers use
+    ``autopilot_*``. ``job_cancel`` cancels a root job and its descendants;
+    ``autopilot_cancel_all`` cancels every open goal in one call.
+
+    Example::
+
+        client = WsCommandClient("ws://127.0.0.1:8765")
+        created = await client.job_create("Summarize the README")
+        await client.job_cancel(created["job_id"])
 
     Args:
-        ws_url: WebSocket URL (e.g. ``ws://127.0.0.1:8765``).
-        timeout: Command timeout in seconds.
+        ws_url: Daemon WebSocket URL (e.g. ``ws://127.0.0.1:8765``).
+        timeout: Per-command timeout in seconds.
     """
 
     def __init__(self, ws_url: str, *, timeout: float = 30.0) -> None:
@@ -260,39 +268,43 @@ class WsCommandClient:
         except Exception as exc:
             raise RuntimeError(f"Command failed: {exc}") from exc
 
-    # Autopilot commands
+    # --- Autopilot goals -------------------------------------------------
 
     async def autopilot_status(self) -> dict[str, Any]:
-        """Get autopilot status."""
+        """Return autopilot scheduler status (running / dreaming / pool)."""
         return await self._send_command("autopilot_status")
 
     async def autopilot_submit(
         self, description: str, *, priority: int = 50, workspace: str | None = None
     ) -> dict[str, Any]:
-        """Submit a new autopilot task."""
+        """Submit a new autopilot goal (returns ``goal_id``)."""
         payload: dict[str, Any] = {"description": description, "priority": priority}
         if workspace:
             payload["workspace"] = workspace
         return await self._send_command("autopilot_submit", payload)
 
     async def autopilot_list_goals(self) -> dict[str, Any]:
-        """List all goals."""
+        """List all goals (including non-root children)."""
         return await self._send_command("autopilot_list_goals")
 
     async def autopilot_get_goal(self, goal_id: str) -> dict[str, Any]:
-        """Get goal details."""
+        """Fetch one goal by id."""
         return await self._send_command("autopilot_get_goal", {"goal_id": goal_id})
 
     async def autopilot_cancel_goal(self, goal_id: str) -> dict[str, Any]:
-        """Cancel a goal."""
+        """Cancel a goal and its non-terminal descendants."""
         return await self._send_command("autopilot_cancel_goal", {"goal_id": goal_id})
 
     async def autopilot_cancel_all(self) -> dict[str, Any]:
-        """Cancel all open (non-terminal) autopilot goals."""
+        """Cancel every open (non-terminal) goal in one call.
+
+        Prefer ``job_cancel(job_id)`` when you know the job root. Use this when
+        you need a bulk stop of leftover pending/active goals.
+        """
         return await self._send_command("autopilot_cancel_all")
 
     async def autopilot_wake(self) -> dict[str, Any]:
-        """Exit dreaming mode."""
+        """Exit dreaming mode and resume scheduling."""
         return await self._send_command("autopilot_wake")
 
     async def autopilot_dream(self) -> dict[str, Any]:
@@ -300,26 +312,26 @@ class WsCommandClient:
         return await self._send_command("autopilot_dream")
 
     async def autopilot_resume(self, goal_id: str) -> dict[str, Any]:
-        """Resume a suspended/blocked goal."""
+        """Resume a suspended or blocked goal."""
         return await self._send_command("autopilot_resume", {"goal_id": goal_id})
 
     async def autopilot_list_jobs(self) -> dict[str, Any]:
-        """List root goals (jobs) only."""
+        """List root goals only (jobs). Prefer ``job_*`` for job control."""
         return await self._send_command("autopilot_list_jobs")
 
     async def autopilot_get_job(self, job_id: str) -> dict[str, Any]:
-        """Get job status with DAG snapshot."""
+        """Get a root job with DAG snapshot. Prefer ``job_status`` / ``job_dag``."""
         return await self._send_command("autopilot_get_job", {"job_id": job_id})
 
     async def autopilot_subscribe(self) -> dict[str, Any]:
-        """Subscribe to autopilot worker events."""
+        """Subscribe this connection to autopilot worker events."""
         return await self._send_command("autopilot_subscribe")
 
     async def autopilot_unsubscribe(self) -> dict[str, Any]:
         """Unsubscribe from autopilot worker events."""
         return await self._send_command("autopilot_unsubscribe")
 
-    # canonical job commands (recommended)
+    # --- Jobs (preferred for job lifecycle) ------------------------------
 
     async def job_create(
         self,
@@ -330,18 +342,7 @@ class WsCommandClient:
         max_iterations: int | None = None,
         guidance: str | None = None,
     ) -> dict[str, Any]:
-        """Create a new autopilot job.
-
-        Args:
-            goal: Job goal text (required).
-            workspace: Optional workspace path.
-            autonomous: Whether to run autonomously.
-            max_iterations: Optional iteration limit.
-            guidance: Optional initial guidance.
-
-        Returns:
-            Dict with job_id and status.
-        """
+        """Create a background job (root goal). Returns ``job_id`` + status."""
         payload: dict[str, Any] = {"goal": goal}
         if workspace:
             payload["workspace"] = workspace
@@ -354,79 +355,35 @@ class WsCommandClient:
         return await self._send_command("job_create", payload)
 
     async def job_status(self, job_id: str) -> dict[str, Any]:
-        """Get job status with goal counts and workers.
-
-        Args:
-            job_id: Job identifier.
-
-        Returns:
-            Dict with job_id, status, active_goals, completed_goals, workers.
-        """
+        """Get job status with goal counts and workers."""
         return await self._send_command("job_status", {"job_id": job_id})
 
     async def job_pause(self, job_id: str) -> dict[str, Any]:
-        """Pause a running job.
-
-        Args:
-            job_id: Job identifier.
-
-        Returns:
-            Dict with job_id and status="suspended".
-        """
+        """Pause a running job (status becomes suspended)."""
         return await self._send_command("job_pause", {"job_id": job_id})
 
     async def job_resume(self, job_id: str) -> dict[str, Any]:
-        """Resume a paused job.
-
-        Args:
-            job_id: Job identifier.
-
-        Returns:
-            Dict with job_id and status="pending".
-        """
+        """Resume a paused job."""
         return await self._send_command("job_resume", {"job_id": job_id})
 
     async def job_cancel(self, job_id: str) -> dict[str, Any]:
-        """Cancel a job.
-
-        Args:
-            job_id: Job identifier.
-
-        Returns:
-            Dict with job_id and status="cancelled".
-        """
+        """Cancel a job root and all non-terminal descendants."""
         return await self._send_command("job_cancel", {"job_id": job_id})
 
     async def job_dag(self, job_id: str) -> dict[str, Any]:
-        """Get job DAG snapshot for visualization.
-
-        Args:
-            job_id: Job identifier.
-
-        Returns:
-            Dict with job_id and dag (nodes/edges).
-        """
+        """Get the job goal DAG (nodes/edges) for visualization."""
         return await self._send_command("job_dag", {"job_id": job_id})
 
     async def job_guidance(
         self, job_id: str, content: str, *, goal_id: str | None = None
     ) -> dict[str, Any]:
-        """Send guidance to a job or specific goal.
-
-        Args:
-            job_id: Job identifier.
-            content: Guidance text.
-            goal_id: Optional specific goal to target.
-
-        Returns:
-            Dict with job_id, goal_id, absorbed.
-        """
+        """Send guidance text to a job or a specific goal under it."""
         payload: dict[str, Any] = {"job_id": job_id, "content": content}
         if goal_id:
             payload["goal_id"] = goal_id
         return await self._send_command("job_guidance", payload)
 
-    # Cron commands
+    # --- Cron ------------------------------------------------------------
 
     async def cron_add(self, text: str, *, priority: int | None = None) -> dict[str, Any]:
         """Submit a natural-language scheduled job."""
@@ -437,75 +394,63 @@ class WsCommandClient:
         return _normalize_cron_add_result(result)
 
     async def cron_list(self, *, status: str | None = None) -> dict[str, Any]:
-        """List scheduled jobs.
-
-        Sends the ``cron_list`` method, which the daemon routes to
-        ``_handle_cron_list``. The former ``cron_list_jobs`` method name is
-        deprecated; it sent a method the daemon did not handle.
-
-        Args:
-            status: Optional status filter.
-
-        Returns:
-            Dict with jobs list.
-        """
+        """List scheduled cron jobs (optional ``status`` filter)."""
         payload: dict[str, Any] = {}
         if status:
             payload["status"] = status
         return await self._send_command("cron_list", payload)
 
     async def cron_show(self, job_id: str) -> dict[str, Any]:
-        """Get job details."""
+        """Get details for one cron job."""
         result = await self._send_command("cron_show", {"job_id": job_id})
         return _normalize_cron_show_result(result)
 
     async def cron_cancel(self, job_id: str) -> dict[str, Any]:
-        """Cancel a scheduled job."""
+        """Cancel a scheduled cron job."""
         return await self._send_command("cron_cancel", {"job_id": job_id})
 
-    # Memory commands
+    # --- Memory (admin) --------------------------------------------------
 
     async def memory_stats(self, mode: str = "daemon") -> dict[str, Any]:
-        """Query daemon memory profiling stats."""
+        """Query daemon memory profiling stats (admin)."""
         return await self._send_command("memory_stats", {"mode": mode})
 
 
 class SyncWsCommandClient:
-    """Synchronous wrapper for WsCommandClient.
+    """Synchronous wrapper around ``WsCommandClient`` for scripts and CLI.
 
-    Provides a synchronous interface for CLI commands that need to call
-    daemon endpoints without async context.
+    Preferred community alias: ``CommandClient``. Each method opens a short
+    WebSocket RPC (same behavior as the async client).
 
     Args:
-        ws_url: WebSocket URL.
-        timeout: Command timeout in seconds.
+        ws_url: Daemon WebSocket URL.
+        timeout: Per-command timeout in seconds.
     """
 
     def __init__(self, ws_url: str, *, timeout: float = 30.0) -> None:
         self._client = WsCommandClient(ws_url, timeout=timeout)
 
     def _run_async(self, coro: Any) -> Any:
-        """Run async coroutine in sync context."""
+        """Run an async coroutine from sync code."""
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             loop = None
 
         if loop is not None:
-            # Already in async context - create task
             return asyncio.ensure_future(coro)
-        else:
-            # Not in async context - run in new loop
-            return asyncio.run(coro)
+        return asyncio.run(coro)
+
+    # --- Autopilot goals -------------------------------------------------
 
     def autopilot_status(self) -> dict[str, Any]:
-        """Get autopilot status (sync)."""
+        """Return autopilot scheduler status."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_status()))
 
     def autopilot_submit(
         self, description: str, *, priority: int = 50, workspace: str | None = None
     ) -> dict[str, Any]:
-        """Submit a new autopilot task (sync)."""
+        """Submit a new autopilot goal."""
         return cast(
             dict[str, Any],
             self._run_async(
@@ -514,51 +459,50 @@ class SyncWsCommandClient:
         )
 
     def autopilot_list_goals(self) -> dict[str, Any]:
-        """List all goals (sync)."""
+        """List all goals."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_list_goals()))
 
     def autopilot_get_goal(self, goal_id: str) -> dict[str, Any]:
-        """Get goal details (sync)."""
+        """Fetch one goal by id."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_get_goal(goal_id)))
 
     def autopilot_cancel_goal(self, goal_id: str) -> dict[str, Any]:
-        """Cancel a goal (sync)."""
+        """Cancel a goal and its non-terminal descendants."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_cancel_goal(goal_id)))
 
     def autopilot_cancel_all(self) -> dict[str, Any]:
-        """Cancel all open autopilot goals (sync)."""
+        """Cancel every open (non-terminal) goal."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_cancel_all()))
 
     def autopilot_wake(self) -> dict[str, Any]:
-        """Exit dreaming mode (sync)."""
+        """Exit dreaming mode."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_wake()))
 
     def autopilot_dream(self) -> dict[str, Any]:
-        """Force dreaming mode (sync)."""
+        """Force dreaming mode."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_dream()))
 
     def autopilot_resume(self, goal_id: str) -> dict[str, Any]:
-        """Resume a suspended/blocked goal (sync)."""
+        """Resume a suspended or blocked goal."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_resume(goal_id)))
 
     def autopilot_list_jobs(self) -> dict[str, Any]:
-        """List root goals (jobs) only (sync)."""
+        """List root goals only (jobs)."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_list_jobs()))
 
     def autopilot_get_job(self, job_id: str) -> dict[str, Any]:
-        """Get job status with DAG snapshot (sync)."""
+        """Get a root job with DAG snapshot."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_get_job(job_id)))
 
-    def job_pause(self, job_id: str) -> dict[str, Any]:
-        """Pause a running autopilot job (sync)."""
-        return cast(dict[str, Any], self._run_async(self._client.job_pause(job_id)))
+    def autopilot_subscribe(self) -> dict[str, Any]:
+        """Subscribe to autopilot worker events."""
+        return cast(dict[str, Any], self._run_async(self._client.autopilot_subscribe()))
 
-    def job_guidance(self, job_id: str, text: str, *, goal_id: str | None = None) -> dict[str, Any]:
-        """Send guidance to an autopilot job or specific goal (sync)."""
-        return cast(
-            dict[str, Any],
-            self._run_async(self._client.job_guidance(job_id, text, goal_id=goal_id)),
-        )
+    def autopilot_unsubscribe(self) -> dict[str, Any]:
+        """Unsubscribe from autopilot worker events."""
+        return cast(dict[str, Any], self._run_async(self._client.autopilot_unsubscribe()))
+
+    # --- Jobs ------------------------------------------------------------
 
     def job_create(
         self,
@@ -569,7 +513,7 @@ class SyncWsCommandClient:
         max_iterations: int | None = None,
         guidance: str | None = None,
     ) -> dict[str, Any]:
-        """Create a new autopilot job."""
+        """Create a background job (root goal)."""
         return cast(
             dict[str, Any],
             self._run_async(
@@ -587,68 +531,69 @@ class SyncWsCommandClient:
         """Get job status with goal counts and workers."""
         return cast(dict[str, Any], self._run_async(self._client.job_status(job_id)))
 
+    def job_pause(self, job_id: str) -> dict[str, Any]:
+        """Pause a running job."""
+        return cast(dict[str, Any], self._run_async(self._client.job_pause(job_id)))
+
     def job_resume(self, job_id: str) -> dict[str, Any]:
-        """Resume a paused autopilot job."""
+        """Resume a paused job."""
         return cast(dict[str, Any], self._run_async(self._client.job_resume(job_id)))
 
     def job_cancel(self, job_id: str) -> dict[str, Any]:
-        """Cancel an autopilot job."""
+        """Cancel a job root and all non-terminal descendants."""
         return cast(dict[str, Any], self._run_async(self._client.job_cancel(job_id)))
 
     def job_dag(self, job_id: str) -> dict[str, Any]:
-        """Get job DAG snapshot for visualization."""
+        """Get the job goal DAG for visualization."""
         return cast(dict[str, Any], self._run_async(self._client.job_dag(job_id)))
 
-    def autopilot_subscribe(self) -> dict[str, Any]:
-        """Subscribe to autopilot worker events (sync)."""
-        return cast(dict[str, Any], self._run_async(self._client.autopilot_subscribe()))
+    def job_guidance(
+        self, job_id: str, content: str, *, goal_id: str | None = None
+    ) -> dict[str, Any]:
+        """Send guidance text to a job or a specific goal under it."""
+        return cast(
+            dict[str, Any],
+            self._run_async(self._client.job_guidance(job_id, content, goal_id=goal_id)),
+        )
 
-    def autopilot_unsubscribe(self) -> dict[str, Any]:
-        """Unsubscribe from autopilot worker events (sync)."""
-        return cast(dict[str, Any], self._run_async(self._client.autopilot_unsubscribe()))
+    # --- Cron ------------------------------------------------------------
 
     def cron_add(self, text: str, *, priority: int | None = None) -> dict[str, Any]:
-        """Submit a natural-language scheduled job (sync)."""
+        """Submit a natural-language scheduled job."""
         return cast(dict[str, Any], self._run_async(self._client.cron_add(text, priority=priority)))
 
     def cron_list(self, *, status: str | None = None) -> dict[str, Any]:
-        """List scheduled jobs (sync)."""
+        """List scheduled cron jobs."""
         return cast(dict[str, Any], self._run_async(self._client.cron_list(status=status)))
 
     def cron_show(self, job_id: str) -> dict[str, Any]:
-        """Get job details (sync)."""
+        """Get details for one cron job."""
         return cast(dict[str, Any], self._run_async(self._client.cron_show(job_id)))
 
     def cron_cancel(self, job_id: str) -> dict[str, Any]:
-        """Cancel a scheduled job (sync)."""
+        """Cancel a scheduled cron job."""
         return cast(dict[str, Any], self._run_async(self._client.cron_cancel(job_id)))
 
+    # --- Memory (admin) --------------------------------------------------
+
     def memory_stats(self, mode: str = "daemon") -> dict[str, Any]:
-        """Query daemon memory profiling stats (sync)."""
+        """Query daemon memory profiling stats (admin)."""
         return cast(dict[str, Any], self._run_async(self._client.memory_stats(mode)))
 
 
 def ws_command_client_from_config(cfg: Any) -> SyncWsCommandClient:
-    """Build a WebSocket command client from CLI or soothe config.
+    """Build a sync command client from soothe/CLI config (host/port).
 
-    Args:
-        cfg: CLI, daemon, or soothe config exposing websocket host/port.
-
-    Returns:
-        SyncWsCommandClient instance.
+    Preferred alias: ``command_client_from_config``.
     """
     ws_url = websocket_url_from_config(cfg)
     return SyncWsCommandClient(ws_url)
 
 
 def async_ws_command_client_from_config(cfg: Any) -> WsCommandClient:
-    """Build an async WebSocket command client from config.
+    """Build an async command client from soothe/CLI config (host/port).
 
-    Args:
-        cfg: CLI, daemon, or soothe config exposing websocket host/port.
-
-    Returns:
-        WsCommandClient instance.
+    Preferred alias: ``async_command_client_from_config``.
     """
     ws_url = websocket_url_from_config(cfg)
     return WsCommandClient(ws_url)
@@ -657,6 +602,17 @@ def async_ws_command_client_from_config(cfg: Any) -> WsCommandClient:
 __all__ = [
     "WsCommandClient",
     "SyncWsCommandClient",
+    "AsyncCommandClient",
+    "CommandClient",
     "ws_command_client_from_config",
     "async_ws_command_client_from_config",
+    "command_client_from_config",
+    "async_command_client_from_config",
 ]
+
+
+# Preferred community names (aliases; wire method names unchanged).
+AsyncCommandClient = WsCommandClient
+CommandClient = SyncWsCommandClient
+command_client_from_config = ws_command_client_from_config
+async_command_client_from_config = async_ws_command_client_from_config
