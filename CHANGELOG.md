@@ -5,6 +5,14 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.7] - 2026-07-16
+
+### Fixed
+- Ignore stale turn-end frames (`complete` / `soothe.stream.end`) left over from a prior goal before the next query starts
+
+### Changed
+- Shared stream-terminal detection helpers; mypy is required in `make verify` and CI
+
 ## [0.9.6] - 2026-07-16
 
 ### Added
