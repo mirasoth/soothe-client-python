@@ -7,7 +7,7 @@ import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, cast
 
 from soothe_sdk.wire.codec import ProtocolError
 
@@ -310,20 +310,20 @@ async def is_daemon_live(
 
     # Standard liveness check without waiting
     for attempt in range(attempts):
-        client: WebSocketClient | None = None
+        probe: WebSocketClient | None = None
         try:
-            client = WebSocketClient(url=ws_url)
-            await client.connect()
-            status = await check_daemon_status(client, timeout=timeout)
+            probe = WebSocketClient(url=ws_url)
+            await probe.connect()
+            status = await check_daemon_status(probe, timeout=timeout)
             return _daemon_status_indicates_live(status)
         except Exception as exc:
             last_error = exc
             if attempt < attempts - 1:
                 await asyncio.sleep(delay_s)
         finally:
-            if client is not None:
+            if probe is not None:
                 with contextlib.suppress(Exception):
-                    await client.close()
+                    await probe.close()
 
     if last_error is not None:
         logger.debug("Daemon health check failed for %s: %s", ws_url, last_error)
@@ -383,7 +383,8 @@ async def fetch_skills_catalog(client: WebSocketClient, timeout: float = 15.0) -
         ConnectionError: If daemon not reachable
     """
     response = await client.request("skills_list", {}, timeout=timeout)
-    return response.get("skills", [])
+    skills = response.get("skills", [])
+    return cast(list[dict[Any, Any]], skills if isinstance(skills, list) else [])
 
 
 async def fetch_config_section(client: WebSocketClient, section: str, timeout: float = 5.0) -> dict:
@@ -405,7 +406,8 @@ async def fetch_config_section(client: WebSocketClient, section: str, timeout: f
     """
     await _ensure_handshake(client, timeout=timeout)
     response = await client.request("config_get", {"section": section}, timeout=timeout)
-    return response.get(section, {})
+    section_data = response.get(section, {})
+    return cast(dict[Any, Any], section_data if isinstance(section_data, dict) else {})
 
 
 async def fetch_loop_history(

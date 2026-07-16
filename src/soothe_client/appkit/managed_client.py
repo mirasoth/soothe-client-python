@@ -7,7 +7,7 @@ Wraps ``WebSocketClient`` and upgrades flat appkit payloads
 from __future__ import annotations
 
 from collections.abc import AsyncIterator, Awaitable, Callable
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 from soothe_client.errors import DisconnectCause
 from soothe_client.websocket import WebSocketClient
@@ -60,23 +60,29 @@ def _coerce_appkit_wire_message(msg: dict[str, Any], client: WebSocketClient) ->
     }
 
     if msg_type in _NOTIFICATION_METHODS:
-        return WireEnvelope(
-            proto="1",
-            type=MessageType.NOTIFICATION.value,
-            method=msg_type,
-            params=params,
-        ).to_wire_dict()
+        return cast(
+            dict[str, Any],
+            WireEnvelope(
+                proto="1",
+                type=MessageType.NOTIFICATION.value,
+                method=msg_type,
+                params=params,
+            ).to_wire_dict(),
+        )
 
     if msg_type in _REQUEST_METHOD_ALIASES or msg_type:
         request_method = _REQUEST_METHOD_ALIASES.get(msg_type, msg_type)
         req_id = str(msg.get("request_id") or msg.get("id") or client._next_request_id())
-        return WireEnvelope(
-            proto="1",
-            type=MessageType.REQUEST.value,
-            method=request_method,
-            params=params,
-            id=req_id,
-        ).to_wire_dict()
+        return cast(
+            dict[str, Any],
+            WireEnvelope(
+                proto="1",
+                type=MessageType.REQUEST.value,
+                method=request_method,
+                params=params,
+                id=req_id,
+            ).to_wire_dict(),
+        )
 
     return msg
 

@@ -155,13 +155,12 @@ class EventClassifier:
             return ChatEventResult(terminal=ChatEventTerminal.CONTINUE)
 
         if typ == "error":
-            err_obj = msg.get("error") if isinstance(msg.get("error"), dict) else {}
-            code = err_obj.get("code") if isinstance(err_obj.get("code"), int) else -32603
-            message = (
-                err_obj.get("message")
-                if isinstance(err_obj.get("message"), str)
-                else "daemon error"
-            )
+            raw_err = msg.get("error")
+            err_obj: dict[str, Any] = raw_err if isinstance(raw_err, dict) else {}
+            raw_code = err_obj.get("code")
+            code = raw_code if isinstance(raw_code, int) else -32603
+            raw_message = err_obj.get("message")
+            message = raw_message if isinstance(raw_message, str) else "daemon error"
             return self._failed_result(DaemonError(code, message, err_obj.get("data")))
 
         if typ == "event":
@@ -174,8 +173,10 @@ class EventClassifier:
         return ChatEventResult(terminal=ChatEventTerminal.CONTINUE)
 
     def _classify_next_envelope(self, env: dict[str, Any]) -> ChatEventResult:
-        payload = env.get("payload") if isinstance(env.get("payload"), dict) else {}
-        inner_data = payload.get("data") if isinstance(payload.get("data"), dict) else None
+        raw_payload = env.get("payload")
+        payload: dict[str, Any] = raw_payload if isinstance(raw_payload, dict) else {}
+        raw_inner = payload.get("data")
+        inner_data: dict[str, Any] | None = raw_inner if isinstance(raw_inner, dict) else None
         if inner_data is not None:
             inner_mode = str(inner_data.get("mode") or "")
             if inner_mode:
@@ -372,8 +373,10 @@ def _first_message_payload(data: Any) -> tuple[str, str, str, bool]:
     msg_map = data[0]
     if not isinstance(msg_map, dict):
         return "", "", "", False
-    msg_type = msg_map.get("type") if isinstance(msg_map.get("type"), str) else ""
-    phase = msg_map.get("phase") if isinstance(msg_map.get("phase"), str) else ""
+    type_raw = msg_map.get("type")
+    msg_type = type_raw if isinstance(type_raw, str) else ""
+    phase_raw = msg_map.get("phase")
+    phase = phase_raw if isinstance(phase_raw, str) else ""
     content = _extract_content_from_message(msg_map)
     return msg_type, content, phase, True
 
@@ -388,7 +391,8 @@ def _loop_ai_message(data: Any) -> dict[str, str] | None:
     phase = phase_raw.strip() if isinstance(phase_raw, str) else ""
     if not phase:
         return None
-    msg_type = msg_map.get("type") if isinstance(msg_map.get("type"), str) else ""
+    type_raw = msg_map.get("type")
+    msg_type = type_raw if isinstance(type_raw, str) else ""
     content = _extract_content_from_message(msg_map)
     return {"type": msg_type, "content": content, "phase": phase}
 

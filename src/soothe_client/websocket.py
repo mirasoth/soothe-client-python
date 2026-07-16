@@ -9,7 +9,7 @@ import time
 import uuid
 from collections import deque
 from collections.abc import AsyncGenerator, Callable
-from typing import Any
+from typing import Any, cast
 
 import websockets.asyncio.client
 import websockets.exceptions
@@ -931,7 +931,7 @@ class WebSocketClient:
         from soothe_sdk.wire.codec import MessageType
 
         if self._pending_events:
-            event = self._pending_events.popleft()
+            event: dict[str, Any] | None = self._pending_events.popleft()
         else:
             event = await self._read_inbound_event()
 
@@ -1617,7 +1617,7 @@ class WebSocketClient:
             message = await self._ws.recv()
             if isinstance(message, bytes):
                 message = message.decode("utf-8")
-            return decode_websocket_text(message)
+            return cast(dict[str, Any] | None, decode_websocket_text(message))
         except websockets.exceptions.ConnectionClosed:
             return None
         except Exception:

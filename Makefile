@@ -137,7 +137,7 @@ p=glob.glob('dist/*.tar.gz')[0]; \
 print('sdist:', p); \
 [print(' ', m.name) for m in tarfile.open(p).getmembers() if m.isfile()][:40]"
 
-verify: format-check lint test build ## Full pre-publish verification
+verify: format-check lint typecheck test build ## Full pre-publish verification
 	@echo ""
 	@echo "✓ All verification checks passed for $(PKG_NAME)@$(PKG_VERSION)"
 	@echo "  Next: make publish-dry"
@@ -182,7 +182,7 @@ print('VERSION ->', '.'.join(v))"
 # Aggregates
 # ---------------------------------------------------------------------------
 
-check: format-check lint test-unit ## Quick CI-style checks (no build)
+check: format-check lint typecheck test-unit ## Quick CI-style checks (no build)
 	@echo "✓ Check passed"
 
 all: verify ## Alias for verify

@@ -241,23 +241,23 @@ class TurnRunner:
             input_msg = self._build_input(message, loop_id, atts, opts)
             try:
                 await conn.client.send_message(input_msg)
-            except Exception as err:
-                await self._persist_failed(session_id, loop_id, err)
-                self._broadcast_error(session_id, err)
+            except Exception as send_err:
+                await self._persist_failed(session_id, loop_id, send_err)
+                self._broadcast_error(session_id, send_err)
                 if self._on_error is not None:
-                    self._on_error(session_id, loop_id, err)
+                    self._on_error(session_id, loop_id, send_err)
                 raise
 
             event_stream = conn.event_stream
             if event_stream is None:
-                err = RuntimeError(
+                missing = RuntimeError(
                     f"missing event stream for session {session_id} (loop {loop_id})"
                 )
-                await self._persist_failed(session_id, loop_id, err)
-                self._broadcast_error(session_id, err)
+                await self._persist_failed(session_id, loop_id, missing)
+                self._broadcast_error(session_id, missing)
                 if self._on_error is not None:
-                    self._on_error(session_id, loop_id, err)
-                raise err
+                    self._on_error(session_id, loop_id, missing)
+                raise missing
 
             assistant_content = ""
             started_at = time.time()
@@ -266,9 +266,9 @@ class TurnRunner:
 
             while True:
                 if cancel_event is not None and cancel_event.is_set():
-                    err = RuntimeError("aborted")
-                    await self._fail_turn(session_id, loop_id, err)
-                    raise err
+                    aborted = RuntimeError("aborted")
+                    await self._fail_turn(session_id, loop_id, aborted)
+                    raise aborted
 
                 if query_timed_out.is_set():
                     with contextlib.suppress(Exception):
@@ -298,7 +298,10 @@ class TurnRunner:
                     )
                     return
 
-                next_task = asyncio.create_task(agen.__anext__())
+                async def _pull_next() -> Any:
+                    return await agen.__anext__()
+
+                next_task: asyncio.Task[Any] = asyncio.create_task(_pull_next())
                 waiters: list[asyncio.Task[Any]] = [
                     next_task,
                     asyncio.create_task(query_timed_out.wait()),
@@ -350,9 +353,9 @@ class TurnRunner:
                     return
 
                 if caller_wait is not None and caller_wait in done:
-                    err = RuntimeError("aborted")
-                    await self._fail_turn(session_id, loop_id, err)
-                    raise err
+                    aborted = RuntimeError("aborted")
+                    await self._fail_turn(session_id, loop_id, aborted)
+                    raise aborted
 
                 try:
                     msg = next_task.result()
@@ -369,9 +372,9 @@ class TurnRunner:
                             "stream_closed",
                         )
                         return
-                    err = RuntimeError("event stream closed")
-                    await self._fail_turn(session_id, loop_id, err)
-                    raise err from None
+                    closed = RuntimeError("event stream closed")
+                    await self._fail_turn(session_id, loop_id, closed)
+                    raise closed from None
 
                 arm_idle()
 
