@@ -5,7 +5,11 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
+
+from soothe_sdk.wire.codec import ProtocolError
 
 from soothe_client.websocket import WebSocketClient
 
@@ -72,6 +76,80 @@ async def _ensure_handshake(client: WebSocketClient, *, timeout: float) -> None:
         return
     await client.request_connection_init()
     await client.wait_for_connection_ack(ack_timeout_s=timeout)
+
+
+@asynccontextmanager
+async def connected_websocket(
+    ws_url: str,
+    *,
+    timeout: float = 30.0,
+) -> AsyncIterator[WebSocketClient]:
+    """Connect, handshake, and yield a ready ``WebSocketClient``.
+
+    Args:
+        ws_url: Daemon WebSocket URL.
+        timeout: Handshake / overall connect budget in seconds.
+
+    Yields:
+        A connected client with protocol-1 handshake complete.
+    """
+    client = WebSocketClient(url=ws_url)
+    try:
+        await client.connect()
+        await asyncio.wait_for(_ensure_handshake(client, timeout=timeout), timeout=timeout)
+        yield client
+    finally:
+        await client.close()
+
+
+async def protocol1_rpc(
+    ws_url: str,
+    method: str,
+    params: dict[str, Any] | None = None,
+    *,
+    mode: str = "request",
+    timeout: float = 30.0,
+) -> dict[str, Any]:
+    """One-shot protocol-1 RPC / notify / subscribe with dict error contract.
+
+    Callers check ``if "error" in response``. Used by Typer commands that do not
+    hold a long-lived session.
+
+    Args:
+        ws_url: WebSocket URL.
+        method: RPC method, notify target, or subscribe channel.
+        params: Structured parameters.
+        mode: ``request``, ``notify``, or ``subscribe``.
+        timeout: Seconds for handshake and the RPC itself.
+
+    Returns:
+        Result dict, ``{}`` for notify, ``{"subscription_id": ...}`` for
+        subscribe, or ``{"error": "..."}`` on failure.
+    """
+    try:
+        async with connected_websocket(ws_url, timeout=timeout) as client:
+            if mode == "notify":
+                await asyncio.wait_for(client.notify(method, params or {}), timeout=timeout)
+                return {}
+            if mode == "subscribe":
+                sub_id = await asyncio.wait_for(
+                    client.subscribe(method, params or {}, timeout=timeout),
+                    timeout=timeout,
+                )
+                return {"subscription_id": sub_id}
+            result = await asyncio.wait_for(
+                client.request(method, params or {}, timeout=timeout),
+                timeout=timeout,
+            )
+            return result if isinstance(result, dict) else {"result": result}
+    except TimeoutError:
+        return {"error": "Timed out waiting for daemon response"}
+    except ProtocolError as exc:
+        return {"error": str(exc)}
+    except (ConnectionError, OSError) as exc:
+        return {"error": f"Connection error: {exc}"}
+    except Exception as exc:
+        return {"error": str(exc)}
 
 
 async def check_daemon_status(
@@ -387,6 +465,8 @@ async def fetch_loop_messages(
 
 __all__ = [
     "websocket_url_from_config",
+    "connected_websocket",
+    "protocol1_rpc",
     "check_daemon_status",
     "is_daemon_live",
     "request_daemon_shutdown",

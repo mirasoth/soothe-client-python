@@ -20,12 +20,14 @@ from soothe_client.errors import (
 )
 from soothe_client.helpers import (
     check_daemon_status,
+    connected_websocket,
     fetch_config_section,
     fetch_loop_cards,
     fetch_loop_history,
     fetch_loop_messages,
     fetch_skills_catalog,
     is_daemon_live,
+    protocol1_rpc,
     request_daemon_config_reload,
     request_daemon_shutdown,
     websocket_url_from_config,
@@ -123,6 +125,8 @@ __all__ = [
     "bootstrap_loop_session",
     "connect_websocket_with_retries",
     "websocket_url_from_config",
+    "connected_websocket",
+    "protocol1_rpc",
     "check_daemon_status",
     "is_daemon_live",
     "request_daemon_config_reload",
