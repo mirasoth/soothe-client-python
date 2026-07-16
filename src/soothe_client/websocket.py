@@ -18,6 +18,7 @@ from soothe_sdk.wire.protocol import decode_websocket_text, encode_websocket_tex
 
 from soothe_client.errors import DisconnectCause, ReconnectError, StaleLoopError
 from soothe_client.intent_hints import validate_loop_input_intent_hint
+from soothe_client.stream_terminal import TURN_END_CUSTOM_TYPES, stale_pending_frame_label
 
 logger = logging.getLogger(__name__)
 
@@ -115,9 +116,7 @@ def _inbound_frame_drop_priority(event: dict[str, Any] | None) -> int:
             data = event.get("data")
             if isinstance(data, dict):
                 custom_type = data.get("type", "")
-                if custom_type == "soothe.stream.end":
-                    return _DROP_PRIORITY_CRITICAL
-                if custom_type == "soothe.cognition.strange_loop.completed":
+                if custom_type in TURN_END_CUSTOM_TYPES:
                     return _DROP_PRIORITY_CRITICAL
                 # Cognition events (step started/completed) - prefer keep
                 if custom_type.startswith("soothe.cognition."):
@@ -181,11 +180,7 @@ def _inbound_needs_delivery_ack(event: dict[str, Any]) -> bool:
                 body = data[0]
                 return isinstance(body, dict) and is_stream_terminal_wire_dict(body)
             if inner_mode == "custom" and isinstance(data, dict):
-                ctype = data.get("type", "")
-                return ctype in (
-                    "soothe.cognition.strange_loop.completed",
-                    "soothe.stream.end",
-                )
+                return data.get("type", "") in TURN_END_CUSTOM_TYPES
     if event.get("type") == "event":
         mode = event.get("mode", "")
         data = event.get("data")
@@ -193,11 +188,7 @@ def _inbound_needs_delivery_ack(event: dict[str, Any]) -> bool:
             body = data[0]
             return isinstance(body, dict) and is_stream_terminal_wire_dict(body)
         if mode == "custom" and isinstance(data, dict):
-            ctype = data.get("type", "")
-            return ctype in (
-                "soothe.cognition.strange_loop.completed",
-                "soothe.stream.end",
-            )
+            return data.get("type", "") in TURN_END_CUSTOM_TYPES
     return False
 
 
@@ -1552,31 +1543,14 @@ class WebSocketClient:
         """
         self._pending_events.clear()
 
-    # Handshake / RPC responses that must not count as turn progress (TUI stall detection).
-    # ``card.replay_*`` / ``card.created`` are emitted by the daemon during
-    # ``loop_subscribe`` for non-TUI clients. The TUI consumes its
-    # cards via the synchronous ``loop_cards_fetch`` RPC so these frames are
-    # peeled silently here. Under protocol-1, RPC responses arrive as
-    # ``type:"response"`` correlated by ``id`` (peeled by the reader loop), so
-    # the legacy ``*_response`` type entries are gone. Under protocol-1 (
-    # §9.3) card replay frames arrive wrapped in ``next`` envelopes with
-    # ``payload.mode`` set to the originating frame type; the peel logic below
-    # inspects both the raw ``type`` and the wrapped ``payload.mode``.
-    _STALE_TURN_PENDING_TYPES = frozenset(
-        {
-            "connection_ack",
-            "card.replay_begin",
-            "card.replay_end",
-            "card.created",
-        }
-    )
-
     def peel_stale_pending_control_events(self) -> list[str]:
-        """Remove stale handshake/RPC frames left in ``_pending_events`` before a turn.
+        """Remove stale handshake/terminal frames left in ``_pending_events`` before a turn.
 
         ``request`` queues unrelated inbound frames while waiting for a matching
         ``id``. If a handshake/control frame remains at turn start, the TUI can
-        mistake it for live progress and never log a stalled stream.
+        mistake it for live progress and never log a stalled stream. Leftover
+        prior-goal terminal frames must also be peeled so they cannot end the
+        next turn before ``status=running``.
 
         Returns:
             List of removed frame types (in order).
@@ -1588,20 +1562,9 @@ class WebSocketClient:
         removed: list[str] = []
         while self._pending_events:
             event = self._pending_events.popleft()
-            event_type = str(event.get("type") or "")
-            # Protocol-1 wraps card replay frames in ``next`` envelopes; peel
-            # them by inspecting ``payload.mode`` so they don't masquerade as
-            # live progress at turn start.
-            stale_mode = ""
-            if event_type == "next":
-                payload = event.get("payload")
-                if isinstance(payload, dict):
-                    stale_mode = str(payload.get("mode") or "")
-            if event_type in self._STALE_TURN_PENDING_TYPES:
-                removed.append(event_type)
-                continue
-            if stale_mode and stale_mode in self._STALE_TURN_PENDING_TYPES:
-                removed.append(stale_mode)
+            label = stale_pending_frame_label(event)
+            if label is not None:
+                removed.append(label)
                 continue
             kept.append(event)
         self._pending_events = kept

@@ -18,18 +18,13 @@ from soothe_client.appkit.chunk_filter import should_drop_stream_chunk_early
 from soothe_client.appkit.events import unwrap_next
 from soothe_client.appkit.observability import TurnEventStats
 from soothe_client.session import bootstrap_loop_session, connect_websocket_with_retries
+from soothe_client.stream_terminal import STREAM_END, is_turn_end_custom_data
 from soothe_client.websocket import WebSocketClient
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_POST_IDLE_DRAIN_S = 0.5
 _RPC_HANDSHAKE_TIMEOUT_S = 20.0
-_TURN_END_CUSTOM_TYPES = frozenset(
-    {
-        "soothe.cognition.strange_loop.completed",
-        "soothe.stream.end",
-    }
-)
 
 EarlyDropFn = Callable[[tuple[Any, ...], str, Any], bool]
 StatsFactory = Callable[[], Any]
@@ -426,25 +421,30 @@ class DaemonSession:
                     if self._should_drop(namespace, mode, data):
                         self.turn_event_stats.filtered_early += 1
                         continue
+
+                    # Prior-goal terminal frames can arrive before status=running
+                    # for the new turn; ignoring them prevents a blank second query.
+                    if mode == "custom" and is_turn_end_custom_data(data) and not query_started:
+                        logger.debug(
+                            "Ignoring pre-start turn-end frame %s (loop=%s)",
+                            str(data.get("type", "")).strip(),
+                            (expected_loop_id or "?")[:16],
+                        )
+                        continue
+
                     progress_seen = True
                     stream_payload_seen = True
                     yield (namespace, mode, data)
-                    if mode == "custom" and isinstance(data, dict):
+                    if mode == "custom" and is_turn_end_custom_data(data):
                         custom_type = str(data.get("type", "")).strip()
-                        if custom_type in _TURN_END_CUSTOM_TYPES:
-                            # stream.end may be scope-tagged; treat blank / turn as end.
-                            if custom_type == "soothe.stream.end":
-                                scope = str(data.get("scope") or "turn").strip().lower()
-                                if scope not in {"", "turn"}:
-                                    continue
-                            self.last_turn_end_state = (
-                                "stream_end" if custom_type == "soothe.stream.end" else "completed"
-                            )
-                            async for chunk in self._drain_stream_events_after_idle(
-                                expected_loop_id=expected_loop_id,
-                            ):
-                                yield chunk
-                            break
+                        self.last_turn_end_state = (
+                            "stream_end" if custom_type == STREAM_END else "completed"
+                        )
+                        async for chunk in self._drain_stream_events_after_idle(
+                            expected_loop_id=expected_loop_id,
+                        ):
+                            yield chunk
+                        break
                     if mode == "updates" and isinstance(data, dict) and "__interrupt__" in data:
                         continue
             except Exception as exc:

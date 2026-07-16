@@ -284,6 +284,59 @@ def test_peel_stale_pending_control_events() -> None:
     assert client._pending_events[0]["type"] == "status"
 
 
+def test_peel_stale_pending_prior_turn_terminal_frames() -> None:
+    """Prior-goal complete/stream.end must not end the next TUI turn."""
+    client = WebSocketClient()
+    client._pending_events.append({"type": "complete", "id": "sub-old"})
+    client._pending_events.append(
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn"},
+        }
+    )
+    client._pending_events.append(
+        {
+            "type": "next",
+            "payload": {
+                "mode": "event",
+                "data": {
+                    "type": "event",
+                    "loop_id": "L1",
+                    "namespace": ["n"],
+                    "mode": "custom",
+                    "data": {
+                        "type": "soothe.cognition.strange_loop.completed",
+                        "status": "done",
+                    },
+                },
+            },
+        }
+    )
+    # Non-turn stream.end and live status must remain.
+    client._pending_events.append(
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "step"},
+        }
+    )
+    client._pending_events.append({"type": "status", "state": "running", "loop_id": "L1"})
+
+    removed = client.peel_stale_pending_control_events()
+
+    assert "complete" in removed
+    assert "soothe.stream.end" in removed
+    assert "soothe.cognition.strange_loop.completed" in removed
+    assert len(client._pending_events) == 2
+    assert client._pending_events[0]["data"]["scope"] == "step"
+    assert client._pending_events[1]["type"] == "status"
+
+
 # ---------------------------------------------------------------------------
 # Background reader delivery
 # ---------------------------------------------------------------------------

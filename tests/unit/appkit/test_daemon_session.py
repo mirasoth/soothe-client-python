@@ -192,6 +192,63 @@ async def test_iter_turn_chunks_ends_on_stream_end() -> None:
 
 
 @pytest.mark.asyncio
+async def test_iter_turn_chunks_ignores_pre_start_stream_end() -> None:
+    """Stale stream.end before status=running must not blank the next query."""
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
+    session._loop_id = "L1"
+
+    events = [
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn"},
+        },
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {
+                "type": "soothe.cognition.strange_loop.completed",
+                "status": "done",
+            },
+        },
+        {"type": "status", "state": "running", "loop_id": "L1"},
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.test.progress"},
+        },
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn"},
+        },
+        None,
+    ]
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=events),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    chunks = [c async for c in session.iter_turn_chunks()]
+    assert chunks == [
+        (("n",), "custom", {"type": "soothe.test.progress"}),
+        (("n",), "custom", {"type": "soothe.stream.end", "scope": "turn"}),
+    ]
+    assert session.last_turn_end_state == "stream_end"
+
+
+@pytest.mark.asyncio
 async def test_iter_turn_chunks_max_wait_raises_timeout() -> None:
     session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
     session._loop_id = "L1"
