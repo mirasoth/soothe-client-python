@@ -35,7 +35,11 @@ class ErrPoolExhausted(Exception):  # noqa: N818 — match Go/TS name
 
 @dataclass(slots=True)
 class PoolConfig:
-    """Configures a ``ConnectionPool``. Zero / negative sizes use defaults."""
+    """Configures a ``ConnectionPool``. Zero / negative sizes use defaults.
+
+    ``max_idle_time_s`` is enforced on ``acquire`` (idle sessions are released).
+    ``health_check_interval_s`` is reserved for future background sweeps.
+    """
 
     pool_size: int = 1000
     query_timeout_s: float = 30 * 60
@@ -151,10 +155,18 @@ class ConnectionPool:
                 if existing.is_disconnected() or not existing.is_connected():
                     await self._release_unlocked(session_id)
                 else:
-                    existing.last_used = time.monotonic()
-                    with contextlib.suppress(Exception):
-                        await self._store.update_last_used(session_id)
-                    return existing
+                    idle_too_long = (
+                        self._cfg.max_idle_time_s > 0
+                        and existing.last_used > 0
+                        and (time.monotonic() - existing.last_used) > self._cfg.max_idle_time_s
+                    )
+                    if idle_too_long:
+                        await self._release_unlocked(session_id)
+                    else:
+                        existing.last_used = time.monotonic()
+                        with contextlib.suppress(Exception):
+                            await self._store.update_last_used(session_id)
+                        return existing
 
             if not self._pool:
                 raise ErrPoolExhausted()
