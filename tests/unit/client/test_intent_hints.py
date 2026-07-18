@@ -24,7 +24,7 @@ class _CapturingClient(WebSocketClient):
 
 
 def test_validate_loop_input_intent_hint_rejects_legacy() -> None:
-    for hint in ("direct_llm", "DIRECT_LLM", " quiz ", "quiz"):
+    for hint in ("direct_llm", "DIRECT_LLM", " quiz ", "quiz", "direct_model"):
         err = validate_loop_input_intent_hint(hint)
         assert err is not None
         assert "removed" in err

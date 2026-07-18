@@ -51,7 +51,7 @@ class ClassifierConfig:
             event allowlist.
         treat_status_idle_as_complete: When true, a status frame with
             ``state==idle`` and non-empty accumulated assistant text completes
-            the turn (typical for direct-model turns). Default false.
+            the turn (typical for intent-hint turns). Default false.
     """
 
     deliverable_phases: frozenset[str] | set[str]
@@ -314,12 +314,10 @@ class EventClassifier:
                     )
                 return self._continue_result(content)
 
-        direct_content, direct_ok = self._messages_mode_assistant_content(data)
-        if direct_ok and self.is_substantive_assistant_reply(direct_content):
-            return self._deliverable_result(
-                direct_content,
-                "soothe.protocol.message.direct_model",
-            )
+        # Unphased terminal AI text is streamable narration only.
+        unphased_content, unphased_ok = self._messages_mode_assistant_content(data)
+        if unphased_ok:
+            return self._continue_result(unphased_content)
 
         if has_payload and raw_content:
             if _is_terminal_message_type(msg_type) or msg_type == "":

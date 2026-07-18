@@ -29,7 +29,7 @@ from soothe_client.appkit import (
     idle_timeout_for_turn,
 )
 
-TRIARCH_PHASES = frozenset({"text_completion", "direct_model", "quiz"})
+TRIARCH_PHASES = frozenset({"text_completion", "goal_completion", "quiz"})
 
 
 class MemStore:

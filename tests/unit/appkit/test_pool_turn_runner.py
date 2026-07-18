@@ -30,7 +30,7 @@ TRIARCH_PHASES = frozenset(
     {
         "quiz",
         "goal_completion",
-        "direct_model",
+        "goal_completion",
         "text_completion",
         "image_to_text",
         "ocr",

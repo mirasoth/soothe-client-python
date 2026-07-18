@@ -9,14 +9,14 @@ IMAGE_TO_TEXT: Final = "image_to_text"
 OCR: Final = "ocr"
 EMBED: Final = "embed"
 
-REMOVED_INTENT_HINTS: frozenset[str] = frozenset({"direct_llm", "quiz"})
+REMOVED_INTENT_HINTS: frozenset[str] = frozenset({"direct_llm", "quiz", "direct_model"})
 
 # Default deliverable phases for turn-ending replies (excludes plan_direct narration).
 DEFAULT_DELIVERABLE_PHASES: frozenset[str] = frozenset(
     {
         "quiz",
         "goal_completion",
-        "direct_model",
+        "chitchat",
         "text_completion",
         "image_to_text",
         "ocr",
@@ -30,13 +30,16 @@ _REMOVED_INTENT_HINT_MESSAGES: dict[str, str] = {
         "use text_completion (text-only) or image_to_text (with attachments)"
     ),
     "quiz": "intent_hint quiz is removed; omit intent_hint and let intake classify the turn",
+    "direct_model": (
+        "intent_hint direct_model is removed; use text_completion, image_to_text, ocr, or embed"
+    ),
 }
 
 
 def validate_loop_input_intent_hint(hint: str) -> str | None:
     """Return an error message when ``hint`` is a removed legacy value.
 
-    Direct model hints and agent-path pass-through values (e.g.
+    Intent-hint values and agent-path pass-through values (e.g.
     ``resume_clarification``, ``skill:foo``) are allowed.
     """
     key = hint.strip().lower()

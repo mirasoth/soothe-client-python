@@ -966,7 +966,7 @@ class WebSocketClient:
             model_params: Additional model parameters.
             router_profile: Named router profile for chat-role overlay this turn.
             attachments: Image attachments (mime_type + base64 data).
-            intent_hint: Daemon-only direct model hint. Supported values:
+            intent_hint: Daemon-only intent_hint. Supported values:
                 ``text_completion`` (``default`` role, text-only),
                 ``image_to_text`` (``image`` role, attachments required),
                 ``ocr`` (``ocr`` role, attachments required),
@@ -974,7 +974,8 @@ class WebSocketClient:
                 ``response_schema`` is supported for ``text_completion`` and
                 ``image_to_text``. Agent-path pass-through hints (e.g.
                 ``resume_clarification``, ``skill:foo``) are forwarded unchanged.
-                Legacy ``direct_llm`` and ``quiz`` are rejected before send.
+                Legacy ``direct_llm``, ``quiz``, and ``direct_model`` are rejected
+                before send.
 
         Raises:
             ValueError: When ``intent_hint`` is a removed legacy value.

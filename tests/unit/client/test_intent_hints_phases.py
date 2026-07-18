@@ -13,10 +13,11 @@ def test_default_deliverable_phases_includes_direct_hints() -> None:
     for phase in (
         "quiz",
         "goal_completion",
-        "direct_model",
+        "chitchat",
         "text_completion",
         "image_to_text",
         "ocr",
         "embed",
     ):
         assert phase in DEFAULT_DELIVERABLE_PHASES
+    assert "direct_model" not in DEFAULT_DELIVERABLE_PHASES

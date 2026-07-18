@@ -18,7 +18,7 @@ TRIARCH_PHASES = frozenset(
     {
         "quiz",
         "goal_completion",
-        "direct_model",
+        "goal_completion",
         "text_completion",
         "image_to_text",
         "ocr",
@@ -72,7 +72,7 @@ def test_classifier_deliverable_phase() -> None:
 
 
 def test_classifier_phase_not_in_config() -> None:
-    cl = EventClassifier(ClassifierConfig(deliverable_phases=frozenset({"direct_model"})))
+    cl = EventClassifier(ClassifierConfig(deliverable_phases=frozenset({"text_completion"})))
     r = cl.classify(_deliverable_next("quiz", "Hello, this is the answer."), "")
     assert r.terminal != ChatEventTerminal.DELIVERABLE_COMPLETE
 

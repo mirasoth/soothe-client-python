@@ -200,7 +200,7 @@ class LoopInputParams(ParamsBase):
         model_params: Additional model parameters.
         router_profile: Named ``router_profiles`` overlay for chat roles this turn.
         attachments: Image attachments.
-        intent_hint: Daemon direct-model hint (text_completion, image_to_text, ocr, embed).
+        intent_hint: Daemon intent_hint (text_completion, image_to_text, ocr, embed).
         response_schema: Structured output schema.
         response_schema_name: Schema name for logging.
         response_schema_strict: Enable strict schema validation.
@@ -415,7 +415,7 @@ class JobCreateParams(ParamsBase):
         autonomous: Enable autonomous mode.
         max_iterations: Max iterations.
         guidance: Initial guidance.
-        intent_hint: Daemon direct-model hint (text_completion, image_to_text, ocr, embed).
+        intent_hint: Daemon intent_hint (text_completion, image_to_text, ocr, embed).
     """
 
     goal: str = Field(..., min_length=1, description="Root goal text")
