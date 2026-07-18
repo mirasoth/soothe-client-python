@@ -271,13 +271,13 @@ def test_input_message_for_loop_opts() -> None:
         "hi",
         "loop-1",
         None,
-        InputOpts(intent_hint="text_completion", preferred_subagent="explore"),
+        InputOpts(intent_hint="text_completion", preferred_subagent="explorer"),
     )
     assert msg["type"] == "loop_input"
     assert msg["content"] == "hi"
     assert msg["loop_id"] == "loop-1"
     assert msg["intent_hint"] == "text_completion"
-    assert msg["preferred_subagent"] == "explore"
+    assert msg["preferred_subagent"] == "explorer"
 
 
 def test_input_message_for_loop_attachments() -> None:

@@ -160,7 +160,7 @@ def test_example_input_message_for_loop() -> None:
         "Analyze this image",
         "loop-456",
         [{"mime_type": "image/png", "data": "base64data"}],
-        InputOpts(intent_hint="image_to_text", preferred_subagent="explore"),
+        InputOpts(intent_hint="image_to_text", preferred_subagent="explorer"),
     )
     assert msg2["intent_hint"] == "image_to_text"
     assert msg2["attachments"]
