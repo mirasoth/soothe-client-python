@@ -1,7 +1,7 @@
 """Appkit offline examples (no live daemon).
 
-Demonstrates SSEBroadcaster, QueryGate, EventClassifier, ConnectionPool, and
-TurnRunner wiring with fakes.
+Demonstrates SSEBroadcaster, QueryGate, EventClassifier, TurnBoundary,
+ConnectionPool, and TurnRunner wiring with fakes.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ import pytest
 
 from soothe_client import DEFAULT_DELIVERABLE_PHASES, TEXT_COMPLETION
 from soothe_client.appkit import (
+    TURN_END_STREAM_END,
     ChatEventTerminal,
     ClassifierConfig,
     ConnectionPool,
@@ -24,11 +25,13 @@ from soothe_client.appkit import (
     SessionMessage,
     SSEBroadcaster,
     SSEEvent,
+    TurnBoundary,
     TurnConfig,
     TurnRunner,
     default_pool_config,
     extract_thinking_step,
     input_message_for_loop,
+    is_daemon_turn_end_event,
 )
 
 
@@ -113,6 +116,32 @@ async def test_example_query_gate() -> None:
     await gate.cancel("session-1")
     assert cancelled == ["daemon", "local"]
     assert not await gate.is_active("session-1")
+
+
+def test_example_turn_boundary() -> None:
+    """DaemonSession turn-end rules on the pool path (TurnRunner contract)."""
+    b = TurnBoundary()
+
+    ended, _ = b.feed({"type": "status", "state": "idle"})
+    assert not ended  # pre-running stub idle
+
+    b.feed({"type": "status", "state": "running", "loop_id": "L1"})
+    b.feed(
+        {
+            "type": "event",
+            "mode": "messages",
+            "data": [{"type": "AIMessageChunk", "content": "enough reply text here"}],
+        }
+    )
+    ended, reason = b.feed(
+        {
+            "type": "event",
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn"},
+        }
+    )
+    assert ended and reason == TURN_END_STREAM_END
+    assert is_daemon_turn_end_event(reason)
 
 
 def test_example_event_classifier() -> None:

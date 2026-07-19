@@ -24,4 +24,5 @@ make test-examples
 | `05_pool_service.py` | `ConnectionPool` + `TurnRunner` (multi-session service style) |
 | `06_jobs.py` | Create / status / cancel a background job |
 
-Offline (no daemon) appkit demos remain under `examples/appkit/` (`make test-examples-offline`).
+Offline (no daemon) appkit demos remain under `examples/appkit/` (`make test-examples-offline`),
+including `TurnBoundary` (DaemonSession turn-end on the pool path).

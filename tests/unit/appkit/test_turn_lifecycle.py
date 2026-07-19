@@ -11,6 +11,7 @@ import pytest
 
 from soothe_client.appkit import (
     TURN_END_IDLE,
+    TURN_END_STOPPED,
     TURN_END_STREAM_END,
     ChatEventTerminal,
     ClassifierConfig,
@@ -30,6 +31,7 @@ from soothe_client.appkit import (
     compact_attachments,
     compact_image_attachment,
     idle_timeout_for_turn,
+    is_daemon_turn_end_event,
 )
 
 TRIARCH_PHASES = frozenset({"text_completion", "goal_completion", "quiz"})
@@ -219,6 +221,41 @@ def test_turn_boundary_ignores_pre_running_idle() -> None:
     assert ended and reason == TURN_END_IDLE
 
 
+def test_turn_boundary_stream_end_requires_running_and_progress() -> None:
+    b = TurnBoundary()
+    end = {
+        "type": "event",
+        "mode": "custom",
+        "data": {"type": "soothe.stream.end", "scope": "turn"},
+    }
+    assert not b.feed(end)[0]
+    b.feed({"type": "status", "state": "running"})
+    assert not b.feed(end)[0]
+    b.feed(
+        {
+            "type": "event",
+            "mode": "messages",
+            "data": [{"type": "AIMessageChunk", "content": "x"}],
+        }
+    )
+    ended, reason = b.feed(end)
+    assert ended and reason == TURN_END_STREAM_END
+
+
+def test_turn_boundary_stopped_after_running() -> None:
+    b = TurnBoundary()
+    assert not b.feed({"type": "status", "state": "stopped"})[0]
+    b.feed({"type": "status", "state": "running"})
+    ended, reason = b.feed({"type": "status", "state": "stopped"})
+    assert ended and reason == TURN_END_STOPPED
+
+
+def test_is_daemon_turn_end_event() -> None:
+    assert is_daemon_turn_end_event(TURN_END_STREAM_END)
+    assert is_daemon_turn_end_event(TURN_END_IDLE)
+    assert not is_daemon_turn_end_event("soothe.protocol.message.goal_completion")
+
+
 @pytest.mark.asyncio
 async def test_turn_runner_stream_end_soft_complete() -> None:
     """TurnBoundary ends the turn without classifier stream.end flags."""
@@ -249,6 +286,62 @@ async def test_turn_runner_stream_end_soft_complete() -> None:
     msgs = store.messages("s1")
     assert msgs and msgs[0].role == "assistant"
     assert msgs[0].metadata.get("completion_event") == TURN_END_STREAM_END
+
+
+@pytest.mark.asyncio
+async def test_turn_runner_boundary_empty_content_fails() -> None:
+    store = MemStore()
+    events = [
+        {"type": "status", "state": "running", "loop_id": "loop-1"},
+        {
+            "type": "event",
+            "mode": "custom",
+            "data": {"type": "soothe.cognition.strange_loop.step.started", "step_id": "s1"},
+        },
+        {
+            "type": "event",
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn"},
+        },
+    ]
+    tr = TurnRunner(
+        _pool(store, FakeClient(events)),
+        QueryGate(),
+        _triarch(),
+        store,
+        SSEBroadcaster(),
+        TurnConfig(query_timeout_s=5.0),
+    )
+    with pytest.raises(RuntimeError, match="no assistant content"):
+        await tr.execute("s1", "hi", "u", "ws", None, None)
+
+
+@pytest.mark.asyncio
+async def test_turn_runner_phase_early_complete_still_works() -> None:
+    store = MemStore()
+    final = {
+        "type": "event",
+        "mode": "messages",
+        "data": [
+            {
+                "type": "AIMessage",
+                "phase": "goal_completion",
+                "content": "The answer is forty-two degrees.",
+            }
+        ],
+    }
+    tr = TurnRunner(
+        _pool(store, FakeClient([final])),
+        QueryGate(),
+        _triarch(),
+        store,
+        SSEBroadcaster(),
+        TurnConfig(query_timeout_s=5.0),
+    )
+    await tr.execute("s1", "hi", "u", "ws", None, None)
+    msgs = store.messages("s1")
+    assert msgs and msgs[0].role == "assistant"
+    assert "goal_completion" in str(msgs[0].metadata.get("completion_event", ""))
 
 
 @pytest.mark.asyncio
