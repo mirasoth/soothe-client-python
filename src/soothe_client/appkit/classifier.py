@@ -49,9 +49,9 @@ class ClassifierConfig:
             persisted as final (avoids finishing on stub ACKs). Defaults to 8.
         thinking_step_events: Optional override of the default thinking-step
             event allowlist.
-        treat_status_idle_as_complete: When true, a status frame with
-            ``state==idle`` and non-empty accumulated assistant text completes
-            the turn (typical for intent-hint turns). Default false.
+        treat_status_idle_as_complete: Standalone ``classify`` only. Prefer
+            ``TurnRunner`` + ``TurnBoundary`` for turn end (DaemonSession
+            contract). Default false.
     """
 
     deliverable_phases: frozenset[str] | set[str]
@@ -85,6 +85,8 @@ class EventClassifier:
             return False
         if event_type in (
             "status.idle",
+            "status.stopped",
+            "soothe.stream.end",
             "idle_timeout",
             "query_timeout",
             "stream_closed",

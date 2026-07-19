@@ -10,6 +10,8 @@ from typing import Any
 import pytest
 
 from soothe_client.appkit import (
+    TURN_END_IDLE,
+    TURN_END_STREAM_END,
     ChatEventTerminal,
     ClassifierConfig,
     CompactImageOptions,
@@ -22,6 +24,7 @@ from soothe_client.appkit import (
     SessionMessage,
     SSEBroadcaster,
     TimeoutPolicy,
+    TurnBoundary,
     TurnConfig,
     TurnRunner,
     compact_attachments,
@@ -198,6 +201,81 @@ def test_classifier_skips_subscription_metadata() -> None:
     )
     assert r.terminal == ChatEventTerminal.CONTINUE
     assert not r.content
+
+
+def test_turn_boundary_ignores_pre_running_idle() -> None:
+    b = TurnBoundary()
+    ended, _ = b.feed({"type": "status", "state": "idle"})
+    assert not ended
+    b.feed({"type": "status", "state": "running"})
+    b.feed(
+        {
+            "type": "event",
+            "mode": "messages",
+            "data": [{"type": "AIMessageChunk", "content": "progress"}],
+        }
+    )
+    ended, reason = b.feed({"type": "status", "state": "idle"})
+    assert ended and reason == TURN_END_IDLE
+
+
+@pytest.mark.asyncio
+async def test_turn_runner_stream_end_soft_complete() -> None:
+    """TurnBoundary ends the turn without classifier stream.end flags."""
+    store = MemStore()
+    events = [
+        {"type": "status", "state": "running", "loop_id": "loop-1"},
+        {
+            "type": "event",
+            "mode": "messages",
+            "data": [{"type": "AIMessageChunk", "content": "enough accumulated reply text"}],
+        },
+        {
+            "type": "event",
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn"},
+        },
+    ]
+    fake = FakeClient(events)
+    tr = TurnRunner(
+        _pool(store, fake),
+        QueryGate(),
+        _triarch(),
+        store,
+        SSEBroadcaster(),
+        TurnConfig(query_timeout_s=5.0),
+    )
+    await tr.execute("s1", "hi", "u", "ws", None, None)
+    msgs = store.messages("s1")
+    assert msgs and msgs[0].role == "assistant"
+    assert msgs[0].metadata.get("completion_event") == TURN_END_STREAM_END
+
+
+@pytest.mark.asyncio
+async def test_turn_runner_gated_idle_soft_complete() -> None:
+    store = MemStore()
+    events = [
+        {"type": "status", "state": "running", "loop_id": "loop-1"},
+        {
+            "type": "event",
+            "mode": "messages",
+            "data": [{"type": "AIMessageChunk", "content": "enough accumulated reply text"}],
+        },
+        {"type": "status", "state": "idle", "loop_id": "loop-1"},
+    ]
+    fake = FakeClient(events)
+    tr = TurnRunner(
+        _pool(store, fake),
+        QueryGate(),
+        _triarch(),
+        store,
+        SSEBroadcaster(),
+        TurnConfig(query_timeout_s=5.0),
+    )
+    await tr.execute("s1", "hi", "u", "ws", None, None)
+    msgs = store.messages("s1")
+    assert msgs and msgs[0].role == "assistant"
+    assert msgs[0].metadata.get("completion_event") == TURN_END_IDLE
 
 
 @pytest.mark.asyncio

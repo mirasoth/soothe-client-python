@@ -1,11 +1,11 @@
 """Turn runner for appkit.
 
 Executes one query turn end-to-end: acquire a pooled connection, enforce
-single-flight, send loop_input, consume the event stream, classify events,
-resolve the deliverable, persist the reply, and broadcast completion.
+single-flight, send loop_input, consume the event stream, persist/broadcast.
 
-Supports absolute query timeout, optional idle silence watchdog, soft-complete
-policies, and optional attachment compaction before send.
+Turn end is owned by ``TurnBoundary`` (DaemonSession.iter_turn_chunks contract:
+gated ``stream.end`` / idle / stopped). ``EventClassifier`` selects user-visible
+text and may early-complete on deliverable phases for UX.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from soothe_client.appkit.classifier import ChatEventTerminal, EventClassifier
 from soothe_client.appkit.pool import ConnectionPool, PooledConn
 from soothe_client.appkit.query_gate import QueryGate
 from soothe_client.appkit.session_store import SessionMessage, SessionStore
+from soothe_client.appkit.turn_boundary import TurnBoundary, is_daemon_turn_end_event
 from soothe_client.intent_hints import validate_loop_input_intent_hint
 
 Attachment = dict[str, Any]
@@ -261,6 +262,7 @@ class TurnRunner:
 
             assistant_content = ""
             started_at = time.time()
+            boundary = TurnBoundary()
             agen = event_stream.__aiter__()
             arm_idle()
 
@@ -378,6 +380,7 @@ class TurnRunner:
 
                 arm_idle()
 
+                ended, end_reason = boundary.feed(msg)
                 event_result = self._classifier.classify(msg, assistant_content)
                 if (
                     event_result.err is not None
@@ -404,7 +407,9 @@ class TurnRunner:
                     event_result,
                     assistant_content,
                 )
-                if deliverable:
+                if deliverable and not is_daemon_turn_end_event(
+                    event_result.completion_event or ""
+                ):
                     await self._complete_turn(
                         session_id,
                         loop_id,
@@ -413,6 +418,20 @@ class TurnRunner:
                         event_result.completion_event or "",
                     )
                     return
+
+                if ended:
+                    if self._classifier.is_substantive_assistant_reply(assistant_content):
+                        await self._complete_turn(
+                            session_id,
+                            loop_id,
+                            assistant_content.strip(),
+                            started_at,
+                            end_reason,
+                        )
+                        return
+                    empty = RuntimeError(f"turn ended ({end_reason}) with no assistant content")
+                    await self._fail_turn(session_id, loop_id, empty)
+                    raise empty
         finally:
             query_timer.cancel()
             with contextlib.suppress(asyncio.CancelledError):

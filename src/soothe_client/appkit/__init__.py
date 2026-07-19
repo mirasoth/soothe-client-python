@@ -42,6 +42,14 @@ from soothe_client.appkit.thinking_step import (
     DEFAULT_THINKING_STEP_EVENTS,
     extract_thinking_step,
 )
+from soothe_client.appkit.turn_boundary import (
+    TURN_END_IDLE,
+    TURN_END_STOPPED,
+    TURN_END_STREAM_END,
+    TurnBoundary,
+    TurnLifecycleGate,
+    is_daemon_turn_end_event,
+)
 from soothe_client.appkit.turn_runner import (
     STREAM_CLOSE_FAIL,
     STREAM_CLOSE_SOFT_COMPLETE,
@@ -88,10 +96,16 @@ __all__ = [
     "SessionMessage",
     "SessionStore",
     "StreamClosePolicy",
+    "TURN_END_IDLE",
+    "TURN_END_STOPPED",
+    "TURN_END_STREAM_END",
     "TimeoutPolicy",
+    "TurnBoundary",
     "TurnConfig",
+    "TurnLifecycleGate",
     "TurnRunner",
     "compact_attachments",
+    "is_daemon_turn_end_event",
     "compact_image_attachment",
     "default_pool_config",
     "extract_thinking_step",
