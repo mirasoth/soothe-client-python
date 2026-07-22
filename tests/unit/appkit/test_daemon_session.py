@@ -69,6 +69,8 @@ async def test_daemon_session_list_loops_uses_rpc_client(monkeypatch: pytest.Mon
 async def test_ensure_connected_uses_reattach_and_probe() -> None:
     session = DaemonSession("ws://127.0.0.1:9")
     session._loop_id = "loop-alive"
+    session._last_turn_end_seq = 2655
+    session._expected_turn_id = "loop-alive:3"
     session._client.is_connection_alive = MagicMock(return_value=False)
     session._client.is_disconnected = MagicMock(return_value=True)
     session._client.reconnect = AsyncMock()
@@ -82,6 +84,9 @@ async def test_ensure_connected_uses_reattach_and_probe() -> None:
     session._client.reattach_and_probe.assert_awaited_once()
     assert session._loop_id == "loop-alive"
     assert session._rpc_connected is False
+    # Daemon restart / reconnect: peer seq may restart at 1.
+    assert session._last_turn_end_seq == 0
+    assert session._expected_turn_id is None
 
 
 @pytest.mark.asyncio
@@ -464,6 +469,109 @@ async def test_iter_turn_chunks_drops_seq_at_or_below_prior_end() -> None:
     assert len(chunks) == 2
     assert session.last_turn_end_state == "stream_end"
     assert session._last_turn_end_seq == 23
+
+
+@pytest.mark.asyncio
+async def test_reconnect_resets_seq_floor_so_post_restart_frames_are_accepted() -> None:
+    """Keep-TUI + daemon restart: seq restarts at 1; floor must not blackout the turn."""
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
+    session._loop_id = "L1"
+    session._last_turn_end_seq = 2655
+    session._expected_turn_id = "L1:9"
+    session._client.is_connection_alive = MagicMock(return_value=False)
+    session._client.is_disconnected = MagicMock(return_value=True)
+    session._client.reconnect = AsyncMock()
+    session._client.reattach_and_probe = AsyncMock()
+    session._rpc_connected = False
+
+    await session.ensure_connected()
+    assert session._last_turn_end_seq == 0
+
+    events = [
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:1", "seq": 1},
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "turn_id": "L1:1",
+            "seq": 2,
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.cognition.strange_loop.step.started", "step_id": "S1"},
+        },
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "turn_id": "L1:1",
+            "seq": 3,
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L1:1"},
+        },
+        None,
+    ]
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=events),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    chunks = [c async for c in session.iter_turn_chunks()]
+    assert [c[2].get("type") for c in chunks] == [
+        "soothe.cognition.strange_loop.step.started",
+        "soothe.stream.end",
+    ]
+    assert session._expected_turn_id == "L1:1"
+    assert session._last_turn_end_seq == 3
+
+
+@pytest.mark.asyncio
+async def test_bootstrap_loop_resets_seq_floor_on_loop_change(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = DaemonSession("ws://127.0.0.1:9")
+    session._loop_id = "old-loop"
+    session._last_turn_end_seq = 900
+    session._expected_turn_id = "old-loop:4"
+
+    async def fake_bootstrap(*_a: object, **_k: object) -> dict[str, object]:
+        return {"type": "status", "loop_id": "new-loop"}
+
+    monkeypatch.setattr(
+        "soothe_client.appkit.daemon_session.bootstrap_loop_session",
+        fake_bootstrap,
+    )
+
+    await session._bootstrap_loop(resume_loop_id="new-loop")
+
+    assert session._loop_id == "new-loop"
+    assert session._last_turn_end_seq == 0
+    assert session._expected_turn_id is None
+
+
+@pytest.mark.asyncio
+async def test_bootstrap_loop_keeps_seq_floor_when_same_loop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = DaemonSession("ws://127.0.0.1:9")
+    session._loop_id = "same-loop"
+    session._last_turn_end_seq = 42
+    session._expected_turn_id = "same-loop:2"
+
+    async def fake_bootstrap(*_a: object, **_k: object) -> dict[str, object]:
+        return {"type": "status", "loop_id": "same-loop"}
+
+    monkeypatch.setattr(
+        "soothe_client.appkit.daemon_session.bootstrap_loop_session",
+        fake_bootstrap,
+    )
+
+    await session._bootstrap_loop(resume_loop_id="same-loop")
+
+    assert session._loop_id == "same-loop"
+    assert session._last_turn_end_seq == 42
+    assert session._expected_turn_id == "same-loop:2"
 
 
 @pytest.mark.asyncio

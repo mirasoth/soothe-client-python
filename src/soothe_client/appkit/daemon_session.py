@@ -82,8 +82,20 @@ class DaemonSession:
         self.last_turn_cancellation_seen: bool = False
         self.last_turn_error_message: str | None = None
         # Last completed turn's seq floor (drop stale prior-turn frames).
+        # Scoped to the current peer seq namespace: reset on reconnect / loop
+        # change — daemon seq is per-process and restarts after daemon restart.
         self._last_turn_end_seq: int = 0
         self._expected_turn_id: str | None = None
+
+    def _reset_turn_seq_floor(self) -> None:
+        """Clear seq/turn filters when the peer seq namespace may have restarted.
+
+        Keep-TUI reconnect after a daemon restart (or subscribe to a different
+        loop) would otherwise drop all low-seq frames — including
+        ``status=running`` — leaving ``query_started=False`` and a silent TUI.
+        """
+        self._last_turn_end_seq = 0
+        self._expected_turn_id = None
 
     @property
     def client(self) -> WebSocketClient:
@@ -131,6 +143,7 @@ class DaemonSession:
         return await self._bootstrap_loop(resume_loop_id=resume_loop_id)
 
     async def _bootstrap_loop(self, *, resume_loop_id: str | None = None) -> dict[str, Any]:
+        prev_loop_id = self._loop_id
         status_event = await bootstrap_loop_session(
             self._client,
             resume_loop_id=resume_loop_id,
@@ -140,6 +153,9 @@ class DaemonSession:
         if status_event.get("type") == "error":
             raise RuntimeError(str(status_event.get("message", "daemon bootstrap failed")))
         self._loop_id = status_event.get("loop_id")
+        # New/changed loop has an independent seq counter on the daemon.
+        if prev_loop_id != self._loop_id:
+            self._reset_turn_seq_floor()
         return status_event
 
     async def new_loop(self) -> dict[str, Any]:
@@ -178,6 +194,10 @@ class DaemonSession:
         else:
             await self._client.close()
             await connect_websocket_with_retries(self._client)
+
+        # Peer seq is process-local; daemon restart restarts counters at 1 while
+        # this session may still hold a high floor from before the disconnect.
+        self._reset_turn_seq_floor()
 
         if resume_loop_id:
             reattach = getattr(self._client, "reattach_and_probe", None)
