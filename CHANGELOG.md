@@ -106,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.3] - 2026-07-15
 
 ### Added
-- Turn lifecycle (Go IG-651 parity): idle silence watchdog (`ErrIdleTimeout`), soft-complete policies, stream-close soft-complete, attachment compaction helpers
+- Turn lifecycle (Go IG-608 parity): idle silence watchdog (`ErrIdleTimeout`), soft-complete policies, stream-close soft-complete, attachment compaction helpers
 - Classifier `treat_status_idle_as_complete` and subscription metadata map skip
 
 ## [0.9.2] - 2026-07-15

@@ -431,7 +431,7 @@ class DaemonSession:
                     ):
                         continue
 
-                    # IG-659 phase 5: drop frames at or before prior turn end seq.
+                    # IG-616 phase 5: drop frames at or before prior turn end seq.
                     ev_seq = frame_seq(event)
                     if ev_seq is not None and last_end_seq > 0 and ev_seq <= last_end_seq:
                         continue
@@ -526,7 +526,7 @@ class DaemonSession:
                         self.turn_event_stats.filtered_early += 1
                         continue
 
-                    # Prefer turn_id match when present; else IG-658 progress gate.
+                    # Prefer turn_id match when present; else IG-615 progress gate.
                     if mode == "custom" and is_turn_end_custom_data(data):
                         data_turn = (
                             frame_turn_id(data if isinstance(data, dict) else None) or ev_turn_id
