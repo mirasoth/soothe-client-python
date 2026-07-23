@@ -9,8 +9,6 @@ IMAGE_TO_TEXT: Final = "image_to_text"
 OCR: Final = "ocr"
 EMBED: Final = "embed"
 
-REMOVED_INTENT_HINTS: frozenset[str] = frozenset({"direct_llm", "quiz", "direct_model"})
-
 # Default deliverable phases for turn-ending replies (excludes plan_direct narration).
 DEFAULT_DELIVERABLE_PHASES: frozenset[str] = frozenset(
     {

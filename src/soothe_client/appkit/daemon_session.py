@@ -731,35 +731,6 @@ class DaemonSession:
         values: dict[str, Any] = dict(raw) if isinstance(raw, dict) else {}
         return SimpleNamespace(values=values)
 
-    async def aupdate_loop_state(
-        self,
-        loop_id: str,
-        values: dict[str, Any],
-        *,
-        timeout: float = 10.0,
-        as_node: str | None = None,
-    ) -> None:
-        """Merge partial state into the loop on the daemon host."""
-        lid = str(loop_id or "").strip()
-        if not lid:
-            return
-
-        async with self._rpc_lock:
-            await self._ensure_rpc_connected()
-            from soothe_sdk.wire.protocol import _serialize_for_json
-
-            payload_values = _serialize_for_json(values)
-            if not isinstance(payload_values, dict):
-                return
-            params: dict[str, Any] = {"loop_id": lid, "values": payload_values}
-            if as_node:
-                params["as_node"] = as_node
-            await self._rpc_client.request(
-                "loop_state_update",
-                params,
-                timeout=timeout,
-            )
-
     async def fetch_conversation_log(
         self,
         loop_id: str,
