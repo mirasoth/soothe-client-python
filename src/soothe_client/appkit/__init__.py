@@ -21,6 +21,7 @@ from soothe_client.appkit.attachments import (
     compact_image_attachment,
 )
 from soothe_client.appkit.broadcaster import SSEBroadcaster, SSEEvent
+from soothe_client.appkit.card_projection import CardProjection, parse_card_custom_payload
 from soothe_client.appkit.classifier import (
     EVENT_FINAL_REPORT,
     ChatEventResult,
@@ -72,6 +73,7 @@ __all__ = [
     "STREAM_CLOSE_FAIL",
     "STREAM_CLOSE_SOFT_COMPLETE",
     "Attachment",
+    "CardProjection",
     "ChatEventResult",
     "ChatEventTerminal",
     "ClassifierConfig",
@@ -111,4 +113,5 @@ __all__ = [
     "extract_thinking_step",
     "idle_timeout_for_turn",
     "input_message_for_loop",
+    "parse_card_custom_payload",
 ]

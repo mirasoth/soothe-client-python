@@ -1,5 +1,8 @@
 """Unit tests for shared stream/turn terminal helpers."""
 
+from soothe_sdk.core.events import CARD_CREATED, CARD_FINALIZED, CARD_UPDATED
+
+from soothe_client.appkit import CardProjection
 from soothe_client.stream_terminal import (
     STRANGE_LOOP_COMPLETED,
     STREAM_END,
@@ -28,6 +31,27 @@ def test_is_turn_progress_chunk_excludes_intake_plan_phase() -> None:
         {"type": "soothe.cognition.strange_loop.plan.phase", "label": "Interpreting goal"},
     )
     assert not is_turn_progress_chunk("custom", {"type": STREAM_END, "scope": "turn"})
+    assert is_turn_progress_chunk("custom", {"type": CARD_CREATED, "data": {"id": "c1"}})
+    assert is_turn_progress_chunk("custom", {"type": CARD_UPDATED, "card_id": "c1"})
+    assert is_turn_progress_chunk("custom", {"type": CARD_FINALIZED, "card_id": "c1"})
+
+
+def test_card_projection_applies_soothe_card_frames() -> None:
+    proj = CardProjection()
+    assert proj.apply(
+        {
+            "type": CARD_CREATED,
+            "data": {
+                "id": "c1",
+                "type": "assistant",
+                "content": "hello",
+            },
+        }
+    )
+    assert proj.get("c1") is not None
+    assert proj.apply({"type": CARD_UPDATED, "card_id": "c1", "data": {"content": "hi"}})
+    assert proj.get("c1") is not None
+    assert proj.get("c1").content == "hi"  # type: ignore[union-attr]
 
 
 def test_stale_pending_frame_label_matches_peel_vocabulary() -> None:

@@ -271,7 +271,7 @@ def test_peel_stale_pending_control_events() -> None:
     client._pending_events.append(
         {
             "type": "next",
-            "payload": {"mode": "card.replay_begin", "data": {"type": "card.replay_begin"}},
+            "payload": {"mode": "soothe.card.replay.begin", "data": {"type": "soothe.card.replay.begin"}},
         }
     )
     client._pending_events.append({"type": "status", "state": "running", "loop_id": "abc"})
@@ -279,7 +279,7 @@ def test_peel_stale_pending_control_events() -> None:
     removed = client.peel_stale_pending_control_events()
 
     assert "connection_ack" in removed
-    assert "card.replay_begin" in removed
+    assert "soothe.card.replay.begin" in removed
     assert len(client._pending_events) == 1
     assert client._pending_events[0]["type"] == "status"
 
