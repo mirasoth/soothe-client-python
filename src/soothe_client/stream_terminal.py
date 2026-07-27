@@ -9,6 +9,11 @@ from __future__ import annotations
 from typing import Any, TypeGuard
 
 from soothe_sdk.core.events import (
+    CARD_CREATED,
+    CARD_FINALIZED,
+    CARD_REPLAY_BEGIN,
+    CARD_REPLAY_END,
+    CARD_UPDATED,
     PLAN_CREATED,
     STRANGE_LOOP_COMPLETED,
     STRANGE_LOOP_STEP_COMPLETED,
@@ -28,6 +33,9 @@ _TURN_PROGRESS_CUSTOM_TYPES = frozenset(
         STRANGE_LOOP_STEP_STARTED,
         STRANGE_LOOP_STEP_QUEUED,
         STRANGE_LOOP_STEP_COMPLETED,
+        CARD_CREATED,
+        CARD_UPDATED,
+        CARD_FINALIZED,
     }
 )
 
@@ -35,9 +43,9 @@ _TURN_PROGRESS_CUSTOM_TYPES = frozenset(
 STALE_TURN_PENDING_TYPES = frozenset(
     {
         "connection_ack",
-        "card.replay_begin",
-        "card.replay_end",
-        "card.created",
+        CARD_REPLAY_BEGIN,
+        CARD_REPLAY_END,
+        CARD_CREATED,
         "complete",
     }
 )
