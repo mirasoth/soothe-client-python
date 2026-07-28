@@ -33,7 +33,6 @@ from soothe_client.helpers import (
     check_daemon_status,
     connected_websocket,
     fetch_config_section,
-    fetch_loop_cards,
     fetch_loop_history,
     fetch_loop_messages,
     fetch_skills_catalog,
@@ -92,7 +91,6 @@ __all__ = [
     "fetch_skills_catalog",
     "fetch_config_section",
     "fetch_loop_history",
-    "fetch_loop_cards",
     "fetch_loop_messages",
     # Intent hints
     "TEXT_COMPLETION",

@@ -10,7 +10,7 @@ import pytest
 
 from soothe_client.appkit import DaemonSession
 from soothe_client.appkit.chunk_filter import should_drop_stream_chunk_early
-from soothe_client.helpers import fetch_loop_cards, fetch_loop_history, fetch_loop_messages
+from soothe_client.helpers import fetch_loop_history, fetch_loop_messages
 
 
 @pytest.mark.asyncio
@@ -33,12 +33,6 @@ async def test_fetch_loop_history_calls_client() -> None:
 @pytest.mark.asyncio
 async def test_fetch_loop_messages_empty_without_id() -> None:
     assert await fetch_loop_messages(MagicMock(), "") == []
-
-
-@pytest.mark.asyncio
-async def test_fetch_loop_cards_requires_loop_id() -> None:
-    with pytest.raises(ValueError, match="loop_id"):
-        await fetch_loop_cards(MagicMock(), "  ")
 
 
 def test_should_drop_noop_updates() -> None:

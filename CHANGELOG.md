@@ -133,8 +133,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.9.0] - 2026-07-15
 
 ### Added
-- Layer 0 loop RPCs on `WebSocketClient`: `loop_list`, `loop_get`, `loop_history_fetch`, `loop_cards_fetch`, `loop_messages`, `loop_state_get`, `loop_state_update`
-- Helpers `fetch_loop_history`, `fetch_loop_cards`, `fetch_loop_messages`
+- Layer 0 loop RPCs on `WebSocketClient`: `loop_list`, `loop_get`, `loop_history_fetch`, `loop_messages`, `loop_state_get`, `loop_state_update`
+- Helpers `fetch_loop_history`, `fetch_loop_messages`
 - `soothe_client.appkit.DaemonSession` — dual-socket session with `iter_turn_chunks`, post-idle drain, reconnect, history/cards/state RPCs (promoted from soothe-cli)
 - Appkit stream early-drop filter and `TurnEventStats`
 

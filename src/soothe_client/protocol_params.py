@@ -22,7 +22,6 @@ __all__ = [
     "LoopMessagesParams",
     "LoopStateGetParams",
     "LoopStateUpdateParams",
-    "LoopCardsFetchParams",
     "LoopDetachParams",
     # Subscription params
     "SubscribeParams",
@@ -267,18 +266,6 @@ class LoopStateUpdateParams(ParamsBase):
     loop_id: str = Field(..., min_length=1)
     values: dict[str, Any]
     as_node: str | None = None
-
-
-class LoopCardsFetchParams(ParamsBase):
-    """Params for ``method=loop_cards_fetch``.
-
-    Attributes:
-        loop_id: Loop identifier (required).
-        since: Fetch cards after this sequence.
-    """
-
-    loop_id: str = Field(..., min_length=1)
-    since: str | None = None
 
 
 class LoopHistoryFetchParams(ParamsBase):

@@ -428,20 +428,6 @@ async def fetch_loop_history(
     return await client.loop_history_fetch(lid, timeout=timeout)
 
 
-async def fetch_loop_cards(
-    client: WebSocketClient,
-    loop_id: str,
-    *,
-    timeout: float = 30.0,
-) -> dict[str, Any]:
-    """Fetch the daemon's bound display-card snapshot for a loop."""
-    lid = str(loop_id or "").strip()
-    if not lid:
-        raise ValueError("loop_id is required")
-    await _ensure_handshake(client, timeout=timeout)
-    return await client.loop_cards_fetch(lid, timeout=timeout)
-
-
 async def fetch_loop_messages(
     client: WebSocketClient,
     loop_id: str,
@@ -480,6 +466,5 @@ __all__ = [
     "fetch_skills_catalog",
     "fetch_config_section",
     "fetch_loop_history",
-    "fetch_loop_cards",
     "fetch_loop_messages",
 ]

@@ -24,7 +24,6 @@ from soothe_client.protocol_params import (
     JobPauseParams,
     JobResumeParams,
     JobStatusParams,
-    LoopCardsFetchParams,
     LoopDeleteParams,
     LoopDetachParams,
     LoopGetParams,
@@ -378,18 +377,6 @@ class TestLoopMessagesParams:
     def test_requires_loop_id(self) -> None:
         with pytest.raises(ValidationError):
             LoopMessagesParams()  # type: ignore[call-arg]
-
-
-class TestLoopCardsFetchParams:
-    """LoopCardsFetchParams validation."""
-
-    def test_valid_with_loop_id(self) -> None:
-        params = LoopCardsFetchParams(loop_id="abc")
-        assert params.since is None
-
-    def test_requires_loop_id(self) -> None:
-        with pytest.raises(ValidationError):
-            LoopCardsFetchParams()  # type: ignore[call-arg]
 
 
 class TestLoopStateGetParams:

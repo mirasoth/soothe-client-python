@@ -623,40 +623,6 @@ class DaemonSession:
         await self._rpc_client.wait_for_connection_ack(ack_timeout_s=_RPC_HANDSHAKE_TIMEOUT_S)
         self._rpc_connected = True
 
-    async def fetch_loop_cards(self, loop_id: str) -> SimpleNamespace:
-        """Fetch bound display-card snapshot for a loop."""
-        lid = str(loop_id or "").strip()
-        if not lid:
-            return SimpleNamespace(cards=[], seq=0, success=False)
-
-        async with self._rpc_lock:
-            await self._ensure_rpc_connected()
-            try:
-                resp = await self._rpc_client.request(
-                    "loop_cards_fetch",
-                    {"loop_id": lid},
-                    timeout=30.0,
-                )
-            except Exception:
-                logger.warning("loop_cards_fetch failed for loop %s", lid[:16], exc_info=True)
-                return SimpleNamespace(cards=[], seq=0, success=False)
-
-        raw_cards = resp.get("cards")
-        cards = list(raw_cards) if isinstance(raw_cards, list) else []
-        seq = int(resp.get("seq") or 0)
-        context_tokens_raw = resp.get("context_tokens")
-        context_tokens = (
-            context_tokens_raw
-            if isinstance(context_tokens_raw, int) and context_tokens_raw >= 0
-            else 0
-        )
-        return SimpleNamespace(
-            cards=cards,
-            seq=seq,
-            context_tokens=context_tokens,
-            success=True,
-        )
-
     async def fetch_loop_history(self, loop_id: str) -> SimpleNamespace:
         """Fetch goal display snapshots plus live card tail."""
         lid = str(loop_id or "").strip()

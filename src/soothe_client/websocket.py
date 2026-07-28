@@ -1066,14 +1066,6 @@ class WebSocketClient:
             timeout=timeout,
         )
 
-    async def loop_cards_fetch(self, loop_id: str, *, timeout: float = 30.0) -> dict[str, Any]:
-        """Fetch bound display-card snapshot (``loop_cards_fetch``)."""
-        return await self.request(
-            "loop_cards_fetch",
-            {"loop_id": loop_id},
-            timeout=timeout,
-        )
-
     async def loop_messages(
         self,
         loop_id: str,

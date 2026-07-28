@@ -9,7 +9,6 @@ import pytest
 from soothe_client import (
     TEXT_COMPLETION,
     WebSocketClient,
-    fetch_loop_cards,
     fetch_loop_history,
     fetch_loop_messages,
 )
@@ -75,9 +74,6 @@ async def test_loop_messages_history_cards_state(
 
     history = await fetch_loop_history(client, bootstrapped_loop, timeout=30.0)
     assert isinstance(history, dict)
-
-    cards = await fetch_loop_cards(client, bootstrapped_loop, timeout=30.0)
-    assert isinstance(cards, dict)
 
     state = await client.loop_state_get(bootstrapped_loop, timeout=30.0)
     assert isinstance(state, dict)
