@@ -22,6 +22,7 @@ __all__ = [
     "LoopMessagesParams",
     "LoopStateGetParams",
     "LoopStateUpdateParams",
+    "LoopExecutionStateFetchParams",
     "LoopDetachParams",
     # Subscription params
     "SubscribeParams",
@@ -266,6 +267,19 @@ class LoopStateUpdateParams(ParamsBase):
     loop_id: str = Field(..., min_length=1)
     values: dict[str, Any]
     as_node: str | None = None
+
+
+class LoopExecutionStateFetchParams(ParamsBase):
+    """Params for ``method=loop_execution_state_fetch``.
+
+    Returns a focused execution-progress snapshot (plan, step_index,
+    iteration, status) for the loop's bound checkpoint thread.
+
+    Attributes:
+        loop_id: Loop identifier (required).
+    """
+
+    loop_id: str = Field(..., min_length=1)
 
 
 class LoopHistoryFetchParams(ParamsBase):

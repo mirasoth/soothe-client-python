@@ -697,6 +697,57 @@ class DaemonSession:
         values: dict[str, Any] = dict(raw) if isinstance(raw, dict) else {}
         return SimpleNamespace(values=values)
 
+    async def fetch_execution_state(self, loop_id: str) -> SimpleNamespace:
+        """Fetch execution-progress snapshot (plan, step_index, iteration, status).
+
+        Returns a namespace with ``plan``, ``step_index``, ``iteration``,
+        ``status`` for the loop's bound checkpoint thread. On RPC failure the
+        fields degrade gracefully (``step_index=0``, ``iteration=0``,
+        ``status=None``, ``plan=None``) so a resume gate can still proceed.
+        """
+        lid = str(loop_id or "").strip()
+        empty = SimpleNamespace(
+            plan=None,
+            step_index=0,
+            iteration=0,
+            status=None,
+            loop_id=lid or None,
+            success=False,
+        )
+        if not lid:
+            return empty
+
+        async with self._rpc_lock:
+            await self._ensure_rpc_connected()
+            try:
+                resp = await self._rpc_client.request(
+                    "loop_execution_state_fetch",
+                    {"loop_id": lid},
+                    timeout=30.0,
+                )
+            except Exception:
+                logger.warning(
+                    "loop_execution_state_fetch failed for loop %s", lid[:16], exc_info=True
+                )
+                return empty
+
+        plan = resp.get("plan")
+        step_index_raw = resp.get("step_index")
+        step_index = step_index_raw if isinstance(step_index_raw, int) else 0
+        iteration_raw = resp.get("iteration")
+        iteration = iteration_raw if isinstance(iteration_raw, int) else 0
+        status_raw = resp.get("status")
+        status = status_raw if isinstance(status_raw, str) else None
+        success = bool(resp.get("success", True))
+        return SimpleNamespace(
+            plan=plan,
+            step_index=step_index,
+            iteration=iteration,
+            status=status,
+            loop_id=resp.get("loop_id", lid),
+            success=success,
+        )
+
     async def fetch_conversation_log(
         self,
         loop_id: str,

@@ -7,7 +7,7 @@ Primary building blocks for agent UIs and backends:
 - ``QueryGate`` — one-in-flight query per session
 - ``EventClassifier`` — stream → deliverable mapping
 - ``SSEBroadcaster`` — drop-on-full fan-out to subscribers
-- ``SessionStore`` — persistence seam (Protocol)
+- ``LoopSessionStore`` — persistence seam (Protocol)
 
 Advanced stream/pipeline plumbing lives in submodules
 (``events``, ``chunk_filter``, ``turn``, ``managed_client``).
@@ -38,7 +38,11 @@ from soothe_client.appkit.pool import (
     default_pool_config,
 )
 from soothe_client.appkit.query_gate import ErrQueryBusy, QueryGate
-from soothe_client.appkit.session_store import SessionEntry, SessionMessage, SessionStore
+from soothe_client.appkit.loop_session_store import (
+    LoopSessionEntry,
+    LoopSessionStore,
+    SessionMessage,
+)
 from soothe_client.appkit.thinking_step import (
     DEFAULT_THINKING_STEP_EVENTS,
     extract_thinking_step,
@@ -87,6 +91,8 @@ __all__ = [
     "ErrQueryTimeout",
     "EventClassifier",
     "InputOpts",
+    "LoopSessionEntry",
+    "LoopSessionStore",
     "OnComplete",
     "OnError",
     "PoolConfig",
@@ -94,9 +100,7 @@ __all__ = [
     "QueryGate",
     "SSEBroadcaster",
     "SSEEvent",
-    "SessionEntry",
     "SessionMessage",
-    "SessionStore",
     "StreamClosePolicy",
     "TURN_END_IDLE",
     "TURN_END_STOPPED",

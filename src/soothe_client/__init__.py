@@ -33,6 +33,7 @@ from soothe_client.helpers import (
     check_daemon_status,
     connected_websocket,
     fetch_config_section,
+    fetch_execution_state,
     fetch_loop_history,
     fetch_loop_messages,
     fetch_skills_catalog,
@@ -90,6 +91,7 @@ __all__ = [
     "request_daemon_shutdown",
     "fetch_skills_catalog",
     "fetch_config_section",
+    "fetch_execution_state",
     "fetch_loop_history",
     "fetch_loop_messages",
     # Intent hints

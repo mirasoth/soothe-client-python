@@ -17,7 +17,7 @@ from soothe_client.appkit import (
     InputOpts,
     PoolConfig,
     QueryGate,
-    SessionEntry,
+    LoopSessionEntry,
     SessionMessage,
     SSEBroadcaster,
     TurnConfig,
@@ -41,10 +41,10 @@ TRIARCH_PHASES = frozenset(
 
 class MemStore:
     def __init__(self) -> None:
-        self.sessions: dict[str, SessionEntry] = {}
+        self.sessions: dict[str, LoopSessionEntry] = {}
         self.msgs: dict[str, list[SessionMessage]] = {}
 
-    async def get_session(self, session_id: str) -> SessionEntry | None:
+    async def get_session(self, session_id: str) -> LoopSessionEntry | None:
         return self.sessions.get(session_id)
 
     async def create_session(
@@ -54,7 +54,7 @@ class MemStore:
         loop_id: str,
         session_type: str,
     ) -> None:
-        self.sessions[session_id] = SessionEntry(
+        self.sessions[session_id] = LoopSessionEntry(
             workspace_id=workspace_id,
             session_id=session_id,
             loop_id=loop_id,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Protocol, runtime_checkable
 
 
-class SessionEntry:
+class LoopSessionEntry:
     """Persisted mapping between an application session id and a daemon loop id."""
 
     __slots__ = (
@@ -63,10 +63,10 @@ class SessionMessage:
 
 
 @runtime_checkable
-class SessionStore(Protocol):
+class LoopSessionStore(Protocol):
     """Persistence seam between appkit and the application's storage backend."""
 
-    async def get_session(self, session_id: str) -> SessionEntry | None:
+    async def get_session(self, session_id: str) -> LoopSessionEntry | None:
         """Return the persisted entry for ``session_id``, or None."""
         ...
 
@@ -97,4 +97,4 @@ class SessionStore(Protocol):
         ...
 
 
-__all__ = ["SessionEntry", "SessionMessage", "SessionStore"]
+__all__ = ["LoopSessionEntry", "SessionMessage", "LoopSessionStore"]

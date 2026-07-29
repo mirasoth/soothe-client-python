@@ -1095,6 +1095,20 @@ class WebSocketClient:
             timeout=timeout,
         )
 
+    async def loop_execution_state_fetch(
+        self, loop_id: str, *, timeout: float = 30.0
+    ) -> dict[str, Any]:
+        """Fetch execution-progress snapshot (``loop_execution_state_fetch``).
+
+        Returns ``{plan, step_index, iteration, status}`` for the loop's bound
+        checkpoint thread.
+        """
+        return await self.request(
+            "loop_execution_state_fetch",
+            {"loop_id": loop_id},
+            timeout=timeout,
+        )
+
     async def loop_state_update(
         self,
         loop_id: str,

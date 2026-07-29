@@ -3,7 +3,7 @@
 Manages a pool of daemon connections, one active per session. Reuses an
 active connection when still live, otherwise bootstraps a fresh loop or
 reattaches an existing one. Persistence of session↔loop mappings is
-abstracted behind ``SessionStore``.
+abstracted behind ``LoopSessionStore``.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from soothe_client.appkit.managed_client import (
     default_bootstrap_func,
     default_client_factory,
 )
-from soothe_client.appkit.session_store import SessionStore
+from soothe_client.appkit.loop_session_store import LoopSessionStore
 from soothe_client.errors import StaleLoopError
 
 
@@ -96,7 +96,7 @@ class ConnectionPool:
     def __init__(
         self,
         url: str,
-        store: SessionStore,
+        store: LoopSessionStore,
         cfg: PoolConfig | None = None,
         factory: ClientFactory | None = None,
     ) -> None:

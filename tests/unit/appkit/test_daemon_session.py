@@ -588,3 +588,55 @@ async def test_iter_turn_chunks_max_wait_raises_timeout() -> None:
     with pytest.raises(TimeoutError, match="Turn timed out"):
         async for _ in session.iter_turn_chunks(max_wait_s=0.1):
             pass
+
+
+@pytest.mark.asyncio
+async def test_fetch_execution_state_maps_payload() -> None:
+    session = DaemonSession("ws://127.0.0.1:9")
+    session._rpc_connected = True
+    session._rpc_client.request = AsyncMock(
+        return_value={
+            "loop_id": "loop-abc",
+            "plan": {"steps": [{"id": "s1"}, {"id": "s2"}]},
+            "step_index": 1,
+            "iteration": 3,
+            "status": "running",
+        }
+    )
+    state = await session.fetch_execution_state("loop-abc")
+    assert isinstance(state, SimpleNamespace)
+    assert state.loop_id == "loop-abc"
+    assert state.step_index == 1
+    assert state.iteration == 3
+    assert state.status == "running"
+    assert state.plan == {"steps": [{"id": "s1"}, {"id": "s2"}]}
+    session._rpc_client.request.assert_awaited_once_with(
+        "loop_execution_state_fetch",
+        {"loop_id": "loop-abc"},
+        timeout=30.0,
+    )
+
+
+@pytest.mark.asyncio
+async def test_fetch_execution_state_empty_loop_id_returns_default() -> None:
+    session = DaemonSession("ws://127.0.0.1:9")
+    state = await session.fetch_execution_state("")
+    assert isinstance(state, SimpleNamespace)
+    assert state.step_index == 0
+    assert state.iteration == 0
+    assert state.status is None
+    assert state.plan is None
+    assert state.loop_id is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_execution_state_rpc_error_returns_default() -> None:
+    session = DaemonSession("ws://127.0.0.1:9")
+    session._rpc_connected = True
+    session._rpc_client.request = AsyncMock(side_effect=RuntimeError("boom"))
+    state = await session.fetch_execution_state("loop-abc")
+    assert isinstance(state, SimpleNamespace)
+    assert state.step_index == 0
+    assert state.iteration == 0
+    assert state.status is None
+    assert state.plan is None
