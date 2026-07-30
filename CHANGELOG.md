@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- Display card wire types renamed to `soothe.card.*` (`soothe.card.created` / `updated` / `finalized` / `replay.begin` / `replay.end`)
+## [1.0.8] - 2026-07-30
 
 ### Added
-- `soothe_client.appkit.CardProjection` / `parse_card_custom_payload` for applying live card frames
+- `DaemonSession.aupdate_loop_state` — merge partial StrangeLoop state via daemon `loop_state_update` (TUI interrupt cleanup / token persistence)
+- `STREAM_END_CANCEL_REASONS` / `is_stream_end_cancel_reason()` for shared cancel-reason classification
+
+### Fixed
+- `DaemonSession` marks `last_turn_cancellation_seen` from `soothe.stream.end` cancel reasons (`cancelled` / `canceled` / `user_cancelled` / `client_disconnect`) and records `last_turn_stream_end_reason`
 
 ## [1.0.3] - 2026-07-19
 
