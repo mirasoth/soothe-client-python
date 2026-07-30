@@ -271,7 +271,10 @@ def test_peel_stale_pending_control_events() -> None:
     client._pending_events.append(
         {
             "type": "next",
-            "payload": {"mode": "soothe.card.replay.begin", "data": {"type": "soothe.card.replay.begin"}},
+            "payload": {
+                "mode": "soothe.card.replay.begin",
+                "data": {"type": "soothe.card.replay.begin"},
+            },
         }
     )
     client._pending_events.append({"type": "status", "state": "running", "loop_id": "abc"})

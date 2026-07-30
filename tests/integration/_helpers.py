@@ -130,6 +130,4 @@ async def cancel_loop_best_effort(client: WebSocketClient, loop_id: str) -> None
     if not lid or not client.is_connected:
         return
     with contextlib.suppress(Exception):
-        await client.send(
-            {"type": "command_request", "command": "cancel", "loop_id": lid}
-        )
+        await client.send({"type": "command_request", "command": "cancel", "loop_id": lid})

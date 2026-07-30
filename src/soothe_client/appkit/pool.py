@@ -15,6 +15,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any
 
+from soothe_client.appkit.loop_session_store import LoopSessionStore
 from soothe_client.appkit.managed_client import (
     BootstrapFunc,
     ClientFactory,
@@ -22,7 +23,6 @@ from soothe_client.appkit.managed_client import (
     default_bootstrap_func,
     default_client_factory,
 )
-from soothe_client.appkit.loop_session_store import LoopSessionStore
 from soothe_client.errors import StaleLoopError
 
 

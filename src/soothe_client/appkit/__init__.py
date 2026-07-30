@@ -30,6 +30,11 @@ from soothe_client.appkit.classifier import (
     EventClassifier,
 )
 from soothe_client.appkit.daemon_session import DaemonSession
+from soothe_client.appkit.loop_session_store import (
+    LoopSessionEntry,
+    LoopSessionStore,
+    SessionMessage,
+)
 from soothe_client.appkit.pool import (
     ConnectionPool,
     ErrPoolExhausted,
@@ -38,11 +43,6 @@ from soothe_client.appkit.pool import (
     default_pool_config,
 )
 from soothe_client.appkit.query_gate import ErrQueryBusy, QueryGate
-from soothe_client.appkit.loop_session_store import (
-    LoopSessionEntry,
-    LoopSessionStore,
-    SessionMessage,
-)
 from soothe_client.appkit.thinking_step import (
     DEFAULT_THINKING_STEP_EVENTS,
     extract_thinking_step,

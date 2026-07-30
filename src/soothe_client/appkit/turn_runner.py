@@ -21,9 +21,9 @@ from typing import Any
 from soothe_client.appkit.attachments import CompactImageOptions, compact_attachments
 from soothe_client.appkit.broadcaster import SSEBroadcaster, SSEEvent
 from soothe_client.appkit.classifier import ChatEventTerminal, EventClassifier
+from soothe_client.appkit.loop_session_store import LoopSessionStore, SessionMessage
 from soothe_client.appkit.pool import ConnectionPool, PooledConn
 from soothe_client.appkit.query_gate import QueryGate
-from soothe_client.appkit.loop_session_store import LoopSessionStore, SessionMessage
 from soothe_client.appkit.turn_boundary import TurnBoundary, is_daemon_turn_end_event
 from soothe_client.intent_hints import validate_loop_input_intent_hint
 
