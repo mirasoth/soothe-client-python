@@ -20,6 +20,7 @@ from soothe_client.appkit.observability import TurnEventStats
 from soothe_client.session import bootstrap_loop_session, connect_websocket_with_retries
 from soothe_client.stream_terminal import (
     STREAM_END,
+    is_stream_end_cancel_reason,
     is_turn_end_custom_data,
     is_turn_progress_chunk,
 )
@@ -81,6 +82,7 @@ class DaemonSession:
         self.last_turn_end_state: str | None = None
         self.last_turn_cancellation_seen: bool = False
         self.last_turn_error_message: str | None = None
+        self.last_turn_stream_end_reason: str | None = None
         # Last completed turn's seq floor (drop stale prior-turn frames).
         # Scoped to the current peer seq namespace: reset on reconnect / loop
         # change — daemon seq is per-process and restarts after daemon restart.
@@ -359,6 +361,7 @@ class DaemonSession:
         self.last_turn_end_state = None
         self.last_turn_cancellation_seen = False
         self.last_turn_error_message = None
+        self.last_turn_stream_end_reason = None
         inbound_dropped_baseline = getattr(self._client, "inbound_dropped", 0)
         query_started = False
         expected_loop_id = self._loop_id
@@ -555,9 +558,14 @@ class DaemonSession:
                     yield (namespace, mode, data)
                     if mode == "custom" and is_turn_end_custom_data(data):
                         custom_type = str(data.get("type", "")).strip()
-                        self.last_turn_end_state = (
-                            "stream_end" if custom_type == STREAM_END else "completed"
-                        )
+                        if custom_type == STREAM_END:
+                            reason = str(data.get("reason") or "").strip().lower()
+                            self.last_turn_stream_end_reason = reason or None
+                            if is_stream_end_cancel_reason(reason):
+                                self.last_turn_cancellation_seen = True
+                            self.last_turn_end_state = "stream_end"
+                        else:
+                            self.last_turn_end_state = "completed"
                         if ev_seq is not None:
                             self._last_turn_end_seq = max(self._last_turn_end_seq, ev_seq)
                         async for chunk in self._drain_stream_events_after_idle(
@@ -696,6 +704,35 @@ class DaemonSession:
         raw = resp.get("values")
         values: dict[str, Any] = dict(raw) if isinstance(raw, dict) else {}
         return SimpleNamespace(values=values)
+
+    async def aupdate_loop_state(
+        self,
+        loop_id: str,
+        values: dict[str, Any],
+        *,
+        timeout: float = 10.0,
+        as_node: str | None = None,
+    ) -> dict[str, Any]:
+        """Merge partial StrangeLoop state via daemon ``loop_state_update``.
+
+        Used by the TUI for interrupt cleanup and token-total persistence.
+        """
+        lid = str(loop_id or "").strip()
+        if not lid or not isinstance(values, dict):
+            return {}
+
+        async with self._rpc_lock:
+            await self._ensure_rpc_connected()
+            try:
+                return await self._rpc_client.loop_state_update(
+                    lid,
+                    values,
+                    as_node=as_node,
+                    timeout=timeout,
+                )
+            except Exception:
+                logger.warning("loop_state_update failed for loop %s", lid[:16], exc_info=True)
+                return {}
 
     async def fetch_execution_state(self, loop_id: str) -> SimpleNamespace:
         """Fetch execution-progress snapshot (plan, step_index, iteration, status).

@@ -24,6 +24,16 @@ from soothe_sdk.core.events import (
 
 TURN_END_CUSTOM_TYPES = frozenset({STREAM_END, STRANGE_LOOP_COMPLETED})
 
+# ``soothe.stream.end`` reasons that mean the turn was cancelled (not a clean end).
+STREAM_END_CANCEL_REASONS = frozenset(
+    {
+        "cancelled",
+        "canceled",
+        "user_cancelled",
+        "client_disconnect",
+    }
+)
+
 # Customs that prove this turn has real work (not mere intake plan.phase).
 # Intake-only phases must not unlock turn-end — prior-goal stream.end can still
 # arrive after status=running (loop 3e43).
@@ -62,6 +72,11 @@ def is_turn_end_custom_data(data: Any) -> TypeGuard[dict[str, Any]]:
         scope = str(data.get("scope") or "turn").strip().lower()
         return scope in {"", "turn"}
     return True
+
+
+def is_stream_end_cancel_reason(reason: str | None) -> bool:
+    """True when a ``stream.end`` reason is a cancel/disconnect (not clean end)."""
+    return str(reason or "").strip().lower() in STREAM_END_CANCEL_REASONS
 
 
 def is_turn_progress_chunk(mode: str, data: Any) -> bool:
@@ -113,8 +128,10 @@ def stale_pending_frame_label(event: dict[str, Any]) -> str | None:
 __all__ = [
     "STALE_TURN_PENDING_TYPES",
     "STREAM_END",
+    "STREAM_END_CANCEL_REASONS",
     "STRANGE_LOOP_COMPLETED",
     "TURN_END_CUSTOM_TYPES",
+    "is_stream_end_cancel_reason",
     "is_turn_end_custom_data",
     "is_turn_progress_chunk",
     "stale_pending_frame_label",

@@ -20,6 +20,17 @@ def test_is_turn_end_custom_data_scopes_stream_end() -> None:
     assert not is_turn_end_custom_data({"type": "soothe.test"})
 
 
+def test_is_stream_end_cancel_reason() -> None:
+    from soothe_client.stream_terminal import is_stream_end_cancel_reason
+
+    assert is_stream_end_cancel_reason("cancelled")
+    assert is_stream_end_cancel_reason("Canceled")
+    assert is_stream_end_cancel_reason("client_disconnect")
+    assert not is_stream_end_cancel_reason("completed")
+    assert not is_stream_end_cancel_reason(None)
+    assert not is_stream_end_cancel_reason("")
+
+
 def test_is_turn_progress_chunk_excludes_intake_plan_phase() -> None:
     assert is_turn_progress_chunk("messages", {"type": "ai", "content": "hi"})
     assert is_turn_progress_chunk(
