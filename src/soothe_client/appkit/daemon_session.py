@@ -24,7 +24,14 @@ from soothe_client.stream_terminal import (
     is_turn_end_custom_data,
     is_turn_progress_chunk,
 )
-from soothe_client.turn_boundary import frame_seq, frame_turn_id, parse_turn_generation
+from soothe_client.turn_boundary import (
+    frame_seq,
+    frame_turn_id,
+    is_idle_terminal_allowed,
+    is_turn_terminal_allowed,
+    parse_turn_generation,
+    turn_ids_match,
+)
 from soothe_client.websocket import WebSocketClient
 
 logger = logging.getLogger(__name__)
@@ -368,7 +375,6 @@ class DaemonSession:
         # Bind turn_id only after this turn's status=running (do not reuse prior).
         self._expected_turn_id = None
         expected_turn_id: str | None = None
-        stream_payload_seen = False
         turn_progress_seen = False
         last_end_seq = int(getattr(self, "_last_turn_end_seq", 0) or 0)
         self._last_turn_end_seq = last_end_seq
@@ -439,23 +445,40 @@ class DaemonSession:
                     if ev_seq is not None and last_end_seq > 0 and ev_seq <= last_end_seq:
                         continue
 
-                    # Drop mismatched turn_id once bound — except status=running,
-                    # which may rebind to a newer generation (pre-admit early
-                    # running can briefly carry a stale or empty turn_id).
+                    # Once bound, drop absent/mismatched turn_id on event/status
+                    # (except status=running, which may rebind to a newer gen;
+                    # pre-admit early running can omit turn_id). Idle/stopped
+                    # fall through to their gates (cancel idle may omit turn_id).
                     ev_turn_id = frame_turn_id(event)
-                    is_running_status = (
-                        event_type == "status" and str(event.get("state") or "") == "running"
+                    status_state = (
+                        str(event.get("state") or "") if event_type == "status" else ""
                     )
+                    is_running_status = status_state == "running"
+                    is_terminal_status = status_state in {"idle", "stopped"}
                     if (
                         expected_turn_id
-                        and ev_turn_id
-                        and ev_turn_id != expected_turn_id
                         and event_type in {"event", "status"}
                         and not is_running_status
+                        and not is_terminal_status
+                        and not turn_ids_match(expected_turn_id, ev_turn_id)
                     ):
                         logger.debug(
-                            "Ignoring mismatched turn_id frame type=%s got=%s expected=%s",
+                            "Ignoring unbound/mismatched turn_id frame type=%s "
+                            "got=%s expected=%s",
                             event_type,
+                            (ev_turn_id or "<absent>")[-24:],
+                            expected_turn_id[-24:],
+                        )
+                        continue
+                    if (
+                        expected_turn_id
+                        and is_terminal_status
+                        and ev_turn_id
+                        and not turn_ids_match(expected_turn_id, ev_turn_id)
+                    ):
+                        logger.debug(
+                            "Ignoring mismatched terminal status=%s got=%s expected=%s",
+                            status_state,
                             ev_turn_id[-24:],
                             expected_turn_id[-24:],
                         )
@@ -478,6 +501,9 @@ class DaemonSession:
                             query_started = True
                             progress_seen = True
                             status_turn = frame_turn_id(event)
+                            # Bind only from running frames that carry turn_id.
+                            # Pre-admit early running omits turn_id and must not
+                            # unlock terminals or poison the expected id.
                             if status_turn:
                                 new_gen = parse_turn_generation(status_turn)
                                 old_gen = parse_turn_generation(expected_turn_id)
@@ -487,11 +513,15 @@ class DaemonSession:
                                     if expected_turn_id and status_turn != expected_turn_id:
                                         # Successor turn admitted while this reader
                                         # still held a stale/early binding.
-                                        stream_payload_seen = False
                                         turn_progress_seen = False
                                     expected_turn_id = status_turn
                                     self._expected_turn_id = status_turn
                         elif query_started and state == "stopped":
+                            stop_turn = frame_turn_id(event)
+                            if expected_turn_id and not turn_ids_match(
+                                expected_turn_id, stop_turn
+                            ):
+                                continue
                             self.last_turn_end_state = state
                             if ev_seq is not None:
                                 self._last_turn_end_seq = max(self._last_turn_end_seq, ev_seq)
@@ -501,7 +531,22 @@ class DaemonSession:
                                 yield chunk
                             break
                         elif query_started and state == "idle":
-                            if not stream_payload_seen and not self.last_turn_cancellation_seen:
+                            idle_turn = frame_turn_id(event)
+                            if not is_idle_terminal_allowed(
+                                expected_turn_id=expected_turn_id,
+                                frame_turn_id=idle_turn,
+                                query_started=query_started,
+                                turn_progress_seen=turn_progress_seen,
+                                cancellation_seen=self.last_turn_cancellation_seen,
+                            ):
+                                logger.debug(
+                                    "Ignoring premature idle "
+                                    "(loop=%s bound=%s idle_turn=%s progress=%s)",
+                                    (expected_loop_id or "?")[:16],
+                                    bool(expected_turn_id),
+                                    (idle_turn or "<absent>")[-24:],
+                                    turn_progress_seen,
+                                )
                                 continue
                             self.last_turn_end_state = state
                             if ev_seq is not None:
@@ -529,30 +574,34 @@ class DaemonSession:
                         self.turn_event_stats.filtered_early += 1
                         continue
 
-                    # Prefer turn_id match when present; else IG-615 progress gate.
+                    # Strict turn_id match: absent ids never unlock turn-end.
                     if mode == "custom" and is_turn_end_custom_data(data):
                         data_turn = (
                             frame_turn_id(data if isinstance(data, dict) else None) or ev_turn_id
                         )
-                        turn_ok = (
-                            not expected_turn_id or not data_turn or data_turn == expected_turn_id
+                        turn_ok = is_turn_terminal_allowed(
+                            expected_turn_id=expected_turn_id,
+                            frame_turn_id=data_turn,
+                            query_started=query_started,
+                            turn_progress_seen=turn_progress_seen,
                         )
-                        if not turn_ok or not query_started or not turn_progress_seen:
+                        if not turn_ok:
                             logger.debug(
                                 "Ignoring premature turn-end frame %s "
-                                "(loop=%s query_started=%s progress=%s turn_ok=%s)",
+                                "(loop=%s query_started=%s progress=%s "
+                                "bound=%s data_turn=%s)",
                                 str(data.get("type", "")).strip()
                                 if isinstance(data, dict)
                                 else "?",
                                 (expected_loop_id or "?")[:16],
                                 query_started,
                                 turn_progress_seen,
-                                turn_ok,
+                                bool(expected_turn_id),
+                                (data_turn or "<absent>")[-24:],
                             )
                             continue
 
                     progress_seen = True
-                    stream_payload_seen = True
                     if is_turn_progress_chunk(mode, data):
                         turn_progress_seen = True
                     yield (namespace, mode, data)

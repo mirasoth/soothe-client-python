@@ -209,15 +209,16 @@ def test_turn_boundary_ignores_pre_running_idle() -> None:
     b = TurnBoundary()
     ended, _ = b.feed({"type": "status", "state": "idle"})
     assert not ended
-    b.feed({"type": "status", "state": "running"})
+    b.feed({"type": "status", "state": "running", "turn_id": "L:1"})
     b.feed(
         {
             "type": "event",
             "mode": "messages",
+            "turn_id": "L:1",
             "data": [{"type": "AIMessageChunk", "content": "progress"}],
         }
     )
-    ended, reason = b.feed({"type": "status", "state": "idle"})
+    ended, reason = b.feed({"type": "status", "state": "idle", "turn_id": "L:1"})
     assert ended and reason == TURN_END_IDLE
 
 
@@ -226,15 +227,17 @@ def test_turn_boundary_stream_end_requires_running_and_progress() -> None:
     end = {
         "type": "event",
         "mode": "custom",
-        "data": {"type": "soothe.stream.end", "scope": "turn"},
+        "turn_id": "L:1",
+        "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L:1"},
     }
     assert not b.feed(end)[0]
-    b.feed({"type": "status", "state": "running"})
+    b.feed({"type": "status", "state": "running", "turn_id": "L:1"})
     assert not b.feed(end)[0]
     b.feed(
         {
             "type": "event",
             "mode": "messages",
+            "turn_id": "L:1",
             "data": [{"type": "AIMessageChunk", "content": "x"}],
         }
     )
@@ -242,11 +245,32 @@ def test_turn_boundary_stream_end_requires_running_and_progress() -> None:
     assert ended and reason == TURN_END_STREAM_END
 
 
+def test_turn_boundary_rejects_absent_turn_id() -> None:
+    b = TurnBoundary()
+    b.feed({"type": "status", "state": "running", "turn_id": "L:1"})
+    b.feed(
+        {
+            "type": "event",
+            "mode": "messages",
+            "turn_id": "L:1",
+            "data": [{"type": "AIMessageChunk", "content": "x"}],
+        }
+    )
+    assert not b.feed(
+        {
+            "type": "event",
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn"},
+        }
+    )[0]
+    assert not b.feed({"type": "status", "state": "idle"})[0]
+
+
 def test_turn_boundary_stopped_after_running() -> None:
     b = TurnBoundary()
     assert not b.feed({"type": "status", "state": "stopped"})[0]
-    b.feed({"type": "status", "state": "running"})
-    ended, reason = b.feed({"type": "status", "state": "stopped"})
+    b.feed({"type": "status", "state": "running", "turn_id": "L:1"})
+    ended, reason = b.feed({"type": "status", "state": "stopped", "turn_id": "L:1"})
     assert ended and reason == TURN_END_STOPPED
 
 
@@ -261,16 +285,18 @@ async def test_turn_runner_stream_end_soft_complete() -> None:
     """TurnBoundary ends the turn without classifier stream.end flags."""
     store = MemStore()
     events = [
-        {"type": "status", "state": "running", "loop_id": "loop-1"},
+        {"type": "status", "state": "running", "loop_id": "loop-1", "turn_id": "loop-1:1"},
         {
             "type": "event",
             "mode": "messages",
+            "turn_id": "loop-1:1",
             "data": [{"type": "AIMessageChunk", "content": "enough accumulated reply text"}],
         },
         {
             "type": "event",
             "mode": "custom",
-            "data": {"type": "soothe.stream.end", "scope": "turn"},
+            "turn_id": "loop-1:1",
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "loop-1:1"},
         },
     ]
     fake = FakeClient(events)
@@ -292,16 +318,18 @@ async def test_turn_runner_stream_end_soft_complete() -> None:
 async def test_turn_runner_boundary_empty_content_fails() -> None:
     store = MemStore()
     events = [
-        {"type": "status", "state": "running", "loop_id": "loop-1"},
+        {"type": "status", "state": "running", "loop_id": "loop-1", "turn_id": "loop-1:1"},
         {
             "type": "event",
             "mode": "custom",
+            "turn_id": "loop-1:1",
             "data": {"type": "soothe.cognition.strange_loop.step.started", "step_id": "s1"},
         },
         {
             "type": "event",
             "mode": "custom",
-            "data": {"type": "soothe.stream.end", "scope": "turn"},
+            "turn_id": "loop-1:1",
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "loop-1:1"},
         },
     ]
     tr = TurnRunner(
@@ -348,13 +376,14 @@ async def test_turn_runner_phase_early_complete_still_works() -> None:
 async def test_turn_runner_gated_idle_soft_complete() -> None:
     store = MemStore()
     events = [
-        {"type": "status", "state": "running", "loop_id": "loop-1"},
+        {"type": "status", "state": "running", "loop_id": "loop-1", "turn_id": "loop-1:1"},
         {
             "type": "event",
             "mode": "messages",
+            "turn_id": "loop-1:1",
             "data": [{"type": "AIMessageChunk", "content": "enough accumulated reply text"}],
         },
-        {"type": "status", "state": "idle", "loop_id": "loop-1"},
+        {"type": "status", "state": "idle", "loop_id": "loop-1", "turn_id": "loop-1:1"},
     ]
     fake = FakeClient(events)
     tr = TurnRunner(

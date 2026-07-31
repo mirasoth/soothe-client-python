@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-07-31
+
+### Changed
+- Display card wire types renamed to `soothe.card.*` (`created` / `updated` / `finalized` / `replay.begin` / `replay.end`)
+
+### Added
+- `CardProjection` / `parseCardCustomPayload` for applying live card frames
+- `EventCardUpdated` / `EventCardFinalized`; card frames count as turn progress
+
 ## [1.0.8] - 2026-07-30
 
 ### Added

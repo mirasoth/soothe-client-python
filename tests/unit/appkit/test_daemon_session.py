@@ -131,15 +131,16 @@ async def test_iter_turn_chunks_ends_on_idle_after_payload() -> None:
     session._loop_id = "L1"
 
     events = [
-        {"type": "status", "state": "running", "loop_id": "L1"},
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:1"},
         {
             "type": "event",
             "loop_id": "L1",
+            "turn_id": "L1:1",
             "namespace": ["n"],
-            "mode": "custom",
-            "data": {"type": "soothe.test"},
+            "mode": "messages",
+            "data": {"type": "ai", "content": "hi"},
         },
-        {"type": "status", "state": "idle", "loop_id": "L1"},
+        {"type": "status", "state": "idle", "loop_id": "L1", "turn_id": "L1:1"},
         None,
     ]
     stub = SimpleNamespace(
@@ -151,7 +152,7 @@ async def test_iter_turn_chunks_ends_on_idle_after_payload() -> None:
     session._client = stub  # type: ignore[assignment]
 
     chunks = [c async for c in session.iter_turn_chunks()]
-    assert chunks == [(("n",), "custom", {"type": "soothe.test"})]
+    assert chunks == [(("n",), "messages", {"type": "ai", "content": "hi"})]
     assert session.last_turn_end_state == "idle"
 
 
@@ -161,10 +162,11 @@ async def test_iter_turn_chunks_ends_on_stream_end() -> None:
     session._loop_id = "L1"
 
     events = [
-        {"type": "status", "state": "running", "loop_id": "L1"},
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:1"},
         {
             "type": "event",
             "loop_id": "L1",
+            "turn_id": "L1:1",
             "namespace": ["n"],
             "mode": "messages",
             "data": {"type": "ai", "content": "hi"},
@@ -172,9 +174,10 @@ async def test_iter_turn_chunks_ends_on_stream_end() -> None:
         {
             "type": "event",
             "loop_id": "L1",
+            "turn_id": "L1:1",
             "namespace": ["n"],
             "mode": "custom",
-            "data": {"type": "soothe.stream.end", "scope": "turn"},
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L1:1"},
         },
         None,
     ]
@@ -215,10 +218,11 @@ async def test_iter_turn_chunks_ignores_pre_start_stream_end() -> None:
                 "status": "done",
             },
         },
-        {"type": "status", "state": "running", "loop_id": "L1"},
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:1"},
         {
             "type": "event",
             "loop_id": "L1",
+            "turn_id": "L1:1",
             "namespace": ["n"],
             "mode": "custom",
             "data": {"type": "soothe.cognition.strange_loop.step.started", "step_id": "S1"},
@@ -226,9 +230,10 @@ async def test_iter_turn_chunks_ignores_pre_start_stream_end() -> None:
         {
             "type": "event",
             "loop_id": "L1",
+            "turn_id": "L1:1",
             "namespace": ["n"],
             "mode": "custom",
-            "data": {"type": "soothe.stream.end", "scope": "turn"},
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L1:1"},
         },
         None,
     ]
@@ -247,7 +252,11 @@ async def test_iter_turn_chunks_ignores_pre_start_stream_end() -> None:
             "custom",
             {"type": "soothe.cognition.strange_loop.step.started", "step_id": "S1"},
         ),
-        (("n",), "custom", {"type": "soothe.stream.end", "scope": "turn"}),
+        (
+            ("n",),
+            "custom",
+            {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L1:1"},
+        ),
     ]
     assert session.last_turn_end_state == "stream_end"
 
@@ -259,10 +268,11 @@ async def test_iter_turn_chunks_ignores_stream_end_after_intake_only() -> None:
     session._loop_id = "L1"
 
     events = [
-        {"type": "status", "state": "running", "loop_id": "L1"},
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:2"},
         {
             "type": "event",
             "loop_id": "L1",
+            "turn_id": "L1:2",
             "namespace": ["n"],
             "mode": "custom",
             "data": {
@@ -273,13 +283,15 @@ async def test_iter_turn_chunks_ignores_stream_end_after_intake_only() -> None:
         {
             "type": "event",
             "loop_id": "L1",
+            "turn_id": "L1:1",
             "namespace": ["n"],
             "mode": "custom",
-            "data": {"type": "soothe.stream.end", "scope": "turn"},
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L1:1"},
         },
         {
             "type": "event",
             "loop_id": "L1",
+            "turn_id": "L1:2",
             "namespace": ["n"],
             "mode": "custom",
             "data": {"type": "soothe.cognition.strange_loop.step.started", "step_id": "EJV-01"},
@@ -287,9 +299,10 @@ async def test_iter_turn_chunks_ignores_stream_end_after_intake_only() -> None:
         {
             "type": "event",
             "loop_id": "L1",
+            "turn_id": "L1:2",
             "namespace": ["n"],
             "mode": "custom",
-            "data": {"type": "soothe.stream.end", "scope": "turn"},
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L1:2"},
         },
         None,
     ]
@@ -307,6 +320,81 @@ async def test_iter_turn_chunks_ignores_stream_end_after_intake_only() -> None:
         "soothe.cognition.strange_loop.step.started",
         "soothe.stream.end",
     ]
+    assert session.last_turn_end_state == "stream_end"
+
+
+@pytest.mark.asyncio
+async def test_iter_turn_chunks_rejects_absent_turn_id_terminals() -> None:
+    """Absent turn_id on stream.end/idle must not end a bound turn (bd6e)."""
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
+    session._loop_id = "L1"
+
+    events = [
+        # Pre-admit running without turn_id must not bind.
+        {"type": "status", "state": "running", "loop_id": "L1"},
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {
+                "type": "soothe.cognition.strange_loop.plan.phase",
+                "label": "Interpreting goal",
+            },
+        },
+        # Prior-goal idle without turn_id (or unbound) must not close.
+        {"type": "status", "state": "idle", "loop_id": "L1"},
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn"},
+        },
+        # Authoritative admit running binds L1:2.
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:2"},
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "turn_id": "L1:2",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.cognition.strange_loop.step.started", "step_id": "DWP-01"},
+        },
+        # Absent turn_id after bind must be ignored.
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn"},
+        },
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "turn_id": "L1:2",
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L1:2"},
+        },
+        None,
+    ]
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=events),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    chunks = [c async for c in session.iter_turn_chunks()]
+    types = [c[2].get("type") for c in chunks]
+    assert types == [
+        "soothe.cognition.strange_loop.plan.phase",
+        "soothe.cognition.strange_loop.step.started",
+        "soothe.stream.end",
+    ]
+    assert session._expected_turn_id == "L1:2"
     assert session.last_turn_end_state == "stream_end"
 
 
