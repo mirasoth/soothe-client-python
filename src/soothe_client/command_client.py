@@ -132,34 +132,6 @@ async def _perform_handshake(ws: Any, *, timeout: float) -> None:
             raise RuntimeError(f"Daemon state is {state}")
 
 
-# Command message types
-_AUTOPilot_COMMANDS = {
-    "status": "autopilot_status",
-    "submit": "autopilot_submit",
-    "list_goals": "autopilot_list_goals",
-    "get_goal": "autopilot_get_goal",
-    "cancel_goal": "autopilot_cancel_goal",
-    "cancel_all": "autopilot_cancel_all",
-    "wake": "autopilot_wake",
-    "dream": "autopilot_dream",
-    "resume": "autopilot_resume",
-    "list_jobs": "autopilot_list_jobs",
-    "get_job": "autopilot_get_job",
-}
-
-_CRON_COMMANDS = {
-    "add": "cron_add",
-    "list": "cron_list",
-    "list_jobs": "cron_list",
-    "show": "cron_show",
-    "cancel": "cron_cancel",
-}
-
-_MEMORY_COMMANDS = {
-    "stats": "memory_stats",
-}
-
-
 class AsyncCommandClient:
     """Async client for one-shot daemon RPCs (jobs, autopilot, cron).
 
@@ -320,6 +292,10 @@ class AsyncCommandClient:
     async def autopilot_get_job(self, job_id: str) -> dict[str, Any]:
         """Get a root job with DAG snapshot. Prefer ``job_status`` / ``job_dag``."""
         return await self._send_command("autopilot_get_job", {"job_id": job_id})
+
+    async def autopilot_top(self) -> dict[str, Any]:
+        """Active-only jobs → goals → loops snapshot for CLI ``top`` (IG-679)."""
+        return await self._send_command("autopilot_top")
 
     async def autopilot_subscribe(self) -> dict[str, Any]:
         """Subscribe this connection to autopilot worker events."""
@@ -500,6 +476,10 @@ class CommandClient:
     def autopilot_get_job(self, job_id: str) -> dict[str, Any]:
         """Get a root job with DAG snapshot."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_get_job(job_id)))
+
+    def autopilot_top(self) -> dict[str, Any]:
+        """Active-only jobs → goals → loops snapshot for CLI ``top``."""
+        return cast(dict[str, Any], self._run_async(self._client.autopilot_top()))
 
     def autopilot_subscribe(self) -> dict[str, Any]:
         """Subscribe to autopilot worker events."""

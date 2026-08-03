@@ -38,6 +38,7 @@ __all__ = [
     "AutopilotResumeParams",
     "AutopilotListJobsParams",
     "AutopilotGetJobParams",
+    "AutopilotTopParams",
     # Job RPC params
     "JobCreateParams",
     "JobStatusParams",
@@ -399,6 +400,10 @@ class AutopilotGetJobParams(ParamsBase):
     """
 
     job_id: str = Field(..., min_length=1)
+
+
+class AutopilotTopParams(EmptyParams):
+    """Params for ``method=autopilot_top`` — no required fields (IG-679)."""
 
 
 # ---------------------------------------------------------------------------
