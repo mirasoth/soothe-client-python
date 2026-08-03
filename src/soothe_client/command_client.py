@@ -270,12 +270,15 @@ class AsyncCommandClient:
         return await self._send_command("autopilot_status")
 
     async def autopilot_submit(
-        self, description: str, *, priority: int = 50, workspace: str | None = None
+        self, description: str, *, priority: int = 50, workspace: str | None = None,
+        rail_id: str | None = None,
     ) -> dict[str, Any]:
         """Submit a new autopilot goal (returns ``goal_id``)."""
         payload: dict[str, Any] = {"description": description, "priority": priority}
         if workspace:
             payload["workspace"] = workspace
+        if rail_id:
+            payload["rail_id"] = rail_id
         return await self._send_command("autopilot_submit", payload)
 
     async def autopilot_list_goals(self) -> dict[str, Any]:
@@ -442,13 +445,23 @@ class CommandClient:
         return cast(dict[str, Any], self._run_async(self._client.autopilot_status()))
 
     def autopilot_submit(
-        self, description: str, *, priority: int = 50, workspace: str | None = None
+        self,
+        description: str,
+        *,
+        priority: int = 50,
+        workspace: str | None = None,
+        rail_id: str | None = None,
     ) -> dict[str, Any]:
         """Submit a new autopilot goal."""
         return cast(
             dict[str, Any],
             self._run_async(
-                self._client.autopilot_submit(description, priority=priority, workspace=workspace)
+                self._client.autopilot_submit(
+                    description,
+                    priority=priority,
+                    workspace=workspace,
+                    rail_id=rail_id,
+                )
             ),
         )
 
