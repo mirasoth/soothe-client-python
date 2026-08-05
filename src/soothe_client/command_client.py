@@ -293,9 +293,15 @@ class AsyncCommandClient:
         """Get a root job with DAG snapshot. Prefer ``job_status`` / ``job_dag``."""
         return await self._send_command("autopilot_get_job", {"job_id": job_id})
 
-    async def autopilot_top(self) -> dict[str, Any]:
-        """Active-only jobs → goals → loops snapshot for CLI ``top`` (IG-679)."""
-        return await self._send_command("autopilot_top")
+    async def autopilot_top(self, *, include_terminal: bool = False) -> dict[str, Any]:
+        """Jobs → goals → loops snapshot for CLI ``top`` (IG-679 / IG-688).
+
+        Args:
+            include_terminal: When true, include terminal goals and jobs.
+        """
+        return await self._send_command(
+            "autopilot_top", {"include_terminal": include_terminal}
+        )
 
     async def autopilot_subscribe(self) -> dict[str, Any]:
         """Subscribe this connection to autopilot worker events."""
@@ -477,9 +483,12 @@ class CommandClient:
         """Get a root job with DAG snapshot."""
         return cast(dict[str, Any], self._run_async(self._client.autopilot_get_job(job_id)))
 
-    def autopilot_top(self) -> dict[str, Any]:
-        """Active-only jobs → goals → loops snapshot for CLI ``top``."""
-        return cast(dict[str, Any], self._run_async(self._client.autopilot_top()))
+    def autopilot_top(self, *, include_terminal: bool = False) -> dict[str, Any]:
+        """Jobs → goals → loops snapshot for CLI ``top``."""
+        return cast(
+            dict[str, Any],
+            self._run_async(self._client.autopilot_top(include_terminal=include_terminal)),
+        )
 
     def autopilot_subscribe(self) -> dict[str, Any]:
         """Subscribe to autopilot worker events."""

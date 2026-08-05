@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.10] - 2026-08-05
+
+### Added
+- `autopilot_top(include_terminal=...)` — optional terminal-goal forest for CLI `top`
+- `AutopilotTopParams.include_terminal` (default `false`)
+- Optional `rail_id` on `autopilot_submit` (prior unreleased)
+
 ## [1.0.9] - 2026-07-31
 
 ### Changed

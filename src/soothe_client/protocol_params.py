@@ -402,8 +402,14 @@ class AutopilotGetJobParams(ParamsBase):
     job_id: str = Field(..., min_length=1)
 
 
-class AutopilotTopParams(EmptyParams):
-    """Params for ``method=autopilot_top`` — no required fields (IG-679)."""
+class AutopilotTopParams(ParamsBase):
+    """Params for ``method=autopilot_top`` (IG-679 / IG-688).
+
+    Attributes:
+        include_terminal: Include terminal goals/jobs when true (default false).
+    """
+
+    include_terminal: bool = False
 
 
 # ---------------------------------------------------------------------------
