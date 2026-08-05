@@ -125,11 +125,12 @@ def test_example_turn_boundary() -> None:
     ended, _ = b.feed({"type": "status", "state": "idle"})
     assert not ended  # pre-running stub idle
 
-    b.feed({"type": "status", "state": "running", "loop_id": "L1"})
+    b.feed({"type": "status", "state": "running", "turn_id": "L1:1"})
     b.feed(
         {
             "type": "event",
             "mode": "messages",
+            "turn_id": "L1:1",
             "data": [{"type": "AIMessageChunk", "content": "enough reply text here"}],
         }
     )
@@ -137,7 +138,8 @@ def test_example_turn_boundary() -> None:
         {
             "type": "event",
             "mode": "custom",
-            "data": {"type": "soothe.stream.end", "scope": "turn"},
+            "turn_id": "L1:1",
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L1:1"},
         }
     )
     assert ended and reason == TURN_END_STREAM_END
