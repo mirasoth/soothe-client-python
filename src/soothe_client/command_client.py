@@ -242,7 +242,11 @@ class AsyncCommandClient:
         return await self._send_command("autopilot_status")
 
     async def autopilot_submit(
-        self, description: str, *, priority: int = 50, workspace: str | None = None,
+        self,
+        description: str,
+        *,
+        priority: int = 50,
+        workspace: str | None = None,
         rail_id: str | None = None,
     ) -> dict[str, Any]:
         """Submit a new autopilot goal (returns ``goal_id``)."""
@@ -299,9 +303,7 @@ class AsyncCommandClient:
         Args:
             include_terminal: When true, include terminal goals and jobs.
         """
-        return await self._send_command(
-            "autopilot_top", {"include_terminal": include_terminal}
-        )
+        return await self._send_command("autopilot_top", {"include_terminal": include_terminal})
 
     async def autopilot_subscribe(self) -> dict[str, Any]:
         """Subscribe this connection to autopilot worker events."""

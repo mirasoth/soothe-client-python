@@ -75,13 +75,16 @@ def test_idle_terminal_requires_progress_or_cancel() -> None:
         cancellation_seen=True,
     )
     # Absent idle id: cancel-only escape hatch.
-    assert is_idle_terminal_allowed(
-        expected_turn_id="L:1",
-        frame_turn_id=None,
-        query_started=True,
-        turn_progress_seen=True,
-        cancellation_seen=False,
-    ) is False
+    assert (
+        is_idle_terminal_allowed(
+            expected_turn_id="L:1",
+            frame_turn_id=None,
+            query_started=True,
+            turn_progress_seen=True,
+            cancellation_seen=False,
+        )
+        is False
+    )
     assert is_idle_terminal_allowed(
         expected_turn_id="L:1",
         frame_turn_id=None,

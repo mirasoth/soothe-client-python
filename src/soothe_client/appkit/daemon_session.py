@@ -450,9 +450,7 @@ class DaemonSession:
                     # pre-admit early running can omit turn_id). Idle/stopped
                     # fall through to their gates (cancel idle may omit turn_id).
                     ev_turn_id = frame_turn_id(event)
-                    status_state = (
-                        str(event.get("state") or "") if event_type == "status" else ""
-                    )
+                    status_state = str(event.get("state") or "") if event_type == "status" else ""
                     is_running_status = status_state == "running"
                     is_terminal_status = status_state in {"idle", "stopped"}
                     if (
@@ -463,8 +461,7 @@ class DaemonSession:
                         and not turn_ids_match(expected_turn_id, ev_turn_id)
                     ):
                         logger.debug(
-                            "Ignoring unbound/mismatched turn_id frame type=%s "
-                            "got=%s expected=%s",
+                            "Ignoring unbound/mismatched turn_id frame type=%s got=%s expected=%s",
                             event_type,
                             (ev_turn_id or "<absent>")[-24:],
                             expected_turn_id[-24:],
@@ -518,9 +515,7 @@ class DaemonSession:
                                     self._expected_turn_id = status_turn
                         elif query_started and state == "stopped":
                             stop_turn = frame_turn_id(event)
-                            if expected_turn_id and not turn_ids_match(
-                                expected_turn_id, stop_turn
-                            ):
+                            if expected_turn_id and not turn_ids_match(expected_turn_id, stop_turn):
                                 continue
                             self.last_turn_end_state = state
                             if ev_seq is not None:
