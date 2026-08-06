@@ -158,7 +158,11 @@ class AsyncCommandClient:
         self._timeout = timeout
 
     async def _send_command(
-        self, command_type: str, payload: dict[str, Any] | None = None
+        self,
+        command_type: str,
+        payload: dict[str, Any] | None = None,
+        *,
+        timeout: float | None = None,
     ) -> dict[str, Any]:
         """Send a protocol-1 request envelope and wait for the response.
 
@@ -171,6 +175,8 @@ class AsyncCommandClient:
         Args:
             command_type: RPC method name (e.g. ``"autopilot_status"``).
             payload: Structured parameters object for the method.
+            timeout: Optional per-call override (seconds). Defaults to the
+                client constructor timeout.
 
         Returns:
             The ``result`` dict from the matching ``response`` envelope.
@@ -181,6 +187,7 @@ class AsyncCommandClient:
         """
         import websockets
 
+        cmd_timeout = self._timeout if timeout is None else timeout
         req_id = str(uuid4())
         envelope = WireEnvelope(
             type=MessageType.REQUEST.value,
@@ -190,15 +197,15 @@ class AsyncCommandClient:
         )
 
         try:
-            async with websockets.connect(self._ws_url, open_timeout=self._timeout) as ws:
-                await _perform_handshake(ws, timeout=self._timeout)
+            async with websockets.connect(self._ws_url, open_timeout=cmd_timeout) as ws:
+                await _perform_handshake(ws, timeout=cmd_timeout)
 
                 # Send the protocol-1 request envelope.
                 await ws.send(encode_envelope(envelope))
 
                 # Wait for the matching response/error envelope.
                 while True:
-                    response_str = await asyncio.wait_for(ws.recv(), timeout=self._timeout)
+                    response_str = await asyncio.wait_for(ws.recv(), timeout=cmd_timeout)
                     response = decode_envelope(response_str)
                     if not isinstance(response, dict):
                         raise RuntimeError(f"Unexpected response: {response_str!r}")
@@ -227,7 +234,7 @@ class AsyncCommandClient:
                     continue
 
         except TimeoutError:
-            raise RuntimeError(f"Command timeout after {self._timeout}s") from None
+            raise RuntimeError(f"Command timeout after {cmd_timeout}s") from None
         except websockets.exceptions.ConnectionClosedError as exc:
             raise RuntimeError(f"WebSocket connection closed: {exc}") from exc
         except RuntimeError:
@@ -249,13 +256,17 @@ class AsyncCommandClient:
         workspace: str | None = None,
         rail_id: str | None = None,
     ) -> dict[str, Any]:
-        """Submit a new autopilot goal (returns ``goal_id``)."""
+        """Submit a new autopilot goal (returns ``goal_id``).
+
+        Uses a 120s RPC timeout so placement analysis can finish before the
+        client gives up (intake may call the verifier LLM).
+        """
         payload: dict[str, Any] = {"description": description, "priority": priority}
         if workspace:
             payload["workspace"] = workspace
         if rail_id:
             payload["rail_id"] = rail_id
-        return await self._send_command("autopilot_submit", payload)
+        return await self._send_command("autopilot_submit", payload, timeout=120.0)
 
     async def autopilot_list_goals(self) -> dict[str, Any]:
         """List all goals (including non-root children)."""

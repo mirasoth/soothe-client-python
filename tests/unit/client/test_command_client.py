@@ -433,10 +433,10 @@ async def test_autopilot_status_delegates_to_send_command() -> None:
 async def test_autopilot_submit_sends_correct_method_and_payload() -> None:
     """autopilot_submit() delegates with method='autopilot_submit' and its payload."""
     client = AsyncCommandClient("ws://localhost:8765/")
-    captured: list[tuple[str, dict[str, Any] | None]] = []
+    captured: list[tuple[str, dict[str, Any] | None, float | None]] = []
 
-    async def fake_send(command_type, payload=None):
-        captured.append((command_type, payload))
+    async def fake_send(command_type, payload=None, *, timeout=None):
+        captured.append((command_type, payload, timeout))
         return {"goal_id": "g-123"}
 
     client._send_command = fake_send  # type: ignore[assignment]
@@ -444,9 +444,10 @@ async def test_autopilot_submit_sends_correct_method_and_payload() -> None:
     result = await client.autopilot_submit("deploy the app", priority=80, workspace="/tmp")
 
     assert result == {"goal_id": "g-123"}
-    method, payload = captured[0]
+    method, payload, timeout = captured[0]
     assert method == "autopilot_submit"
     assert payload == {"description": "deploy the app", "priority": 80, "workspace": "/tmp"}
+    assert timeout == 120.0
 
 
 async def test_cron_add_delegates_to_send_command() -> None:
