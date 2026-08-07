@@ -195,6 +195,7 @@ class LoopInputParams(ParamsBase):
         loop_id: Loop identifier (required).
         content: User input text or structured content (required).
         preferred_subagent: Routing hint.
+        intake_scope: Forced StrangeLoop scope (``trivial``|``simple``|``complex``).
         model: Provider:model override.
         model_params: Additional model parameters.
         router_profile: Named ``router_profiles`` overlay for chat roles this turn.
@@ -211,6 +212,7 @@ class LoopInputParams(ParamsBase):
     loop_id: str = Field(..., min_length=1)
     content: str | dict[str, Any] = Field(..., description="User input text or structured content")
     preferred_subagent: str | None = None
+    intake_scope: str | None = None
     model: str | None = None
     model_params: dict[str, Any] | None = None
     router_profile: str | None = None

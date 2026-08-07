@@ -939,6 +939,7 @@ class WebSocketClient:
         text: str,
         *,
         preferred_subagent: str | None = None,
+        intake_scope: str | None = None,
         model: str | None = None,
         model_params: dict[str, Any] | None = None,
         router_profile: str | None = None,
@@ -957,6 +958,9 @@ class WebSocketClient:
             loop_id: Loop identifier for the subscribed loop.
             text: User input text.
             preferred_subagent: Preferred subagent hint for routing.
+            intake_scope: Forced StrangeLoop intake scope
+                (``trivial``|``simple``|``complex``). When set, the daemon skips
+                Pass 1 and Pass 2 LLM intake.
             model: Provider:model override string.
             model_params: Additional model parameters.
             router_profile: Named router profile for chat-role overlay this turn.
@@ -990,6 +994,8 @@ class WebSocketClient:
         }
         if preferred_subagent is not None:
             params["preferred_subagent"] = preferred_subagent
+        if intake_scope:
+            params["intake_scope"] = intake_scope
         if model:
             params["model"] = model
         if model_params:

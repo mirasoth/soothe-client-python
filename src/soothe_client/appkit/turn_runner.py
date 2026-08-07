@@ -80,6 +80,7 @@ class InputOpts:
 
     intent_hint: str | None = None
     preferred_subagent: str | None = None
+    intake_scope: str | None = None
     response_schema: dict[str, Any] | None = None
     response_schema_name: str | None = None
     response_schema_strict: bool | None = None
@@ -102,6 +103,8 @@ def input_message_for_loop(
             msg["intent_hint"] = opts.intent_hint.strip()
         if opts.preferred_subagent and opts.preferred_subagent.strip():
             msg["preferred_subagent"] = opts.preferred_subagent.strip()
+        if opts.intake_scope and opts.intake_scope.strip():
+            msg["intake_scope"] = opts.intake_scope.strip()
         if opts.response_schema:
             msg["response_schema"] = opts.response_schema
         if opts.response_schema_name and opts.response_schema_name.strip():
