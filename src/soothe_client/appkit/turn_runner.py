@@ -25,8 +25,6 @@ from soothe_client.appkit.loop_session_store import LoopSessionStore, SessionMes
 from soothe_client.appkit.pool import ConnectionPool, PooledConn
 from soothe_client.appkit.query_gate import QueryGate
 from soothe_client.appkit.turn_boundary import TurnBoundary, is_daemon_turn_end_event
-from soothe_client.intent_hints import validate_loop_input_intent_hint
-
 Attachment = dict[str, Any]
 OnComplete = Callable[[str, str, str, str, float], None]
 OnError = Callable[[str, str, BaseException], None]
@@ -101,9 +99,6 @@ def input_message_for_loop(
         msg["attachments"] = attachments
     if opts is not None:
         if opts.intent_hint and opts.intent_hint.strip():
-            hint_err = validate_loop_input_intent_hint(opts.intent_hint)
-            if hint_err:
-                raise ValueError(hint_err)
             msg["intent_hint"] = opts.intent_hint.strip()
         if opts.preferred_subagent and opts.preferred_subagent.strip():
             msg["preferred_subagent"] = opts.preferred_subagent.strip()

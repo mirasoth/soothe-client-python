@@ -49,7 +49,6 @@ from soothe_client.intent_hints import (
     IMAGE_TO_TEXT,
     OCR,
     TEXT_COMPLETION,
-    validate_loop_input_intent_hint,
 )
 from soothe_client.session import (
     bootstrap_loop_session,
@@ -100,5 +99,4 @@ __all__ = [
     "OCR",
     "EMBED",
     "DEFAULT_DELIVERABLE_PHASES",
-    "validate_loop_input_intent_hint",
 ]

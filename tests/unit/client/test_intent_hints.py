@@ -1,4 +1,4 @@
-"""Client-side ``loop_input.intent_hint`` validation."""
+"""Client-side ``loop_input.intent_hint`` send path."""
 
 from __future__ import annotations
 
@@ -9,7 +9,6 @@ from soothe_client.intent_hints import (
     IMAGE_TO_TEXT,
     OCR,
     TEXT_COMPLETION,
-    validate_loop_input_intent_hint,
 )
 from soothe_client.websocket import WebSocketClient
 
@@ -23,14 +22,9 @@ class _CapturingClient(WebSocketClient):
         self.sent.append(message)
 
 
-def test_validate_loop_input_intent_hint_rejects_legacy() -> None:
-    for hint in ("direct_llm", "DIRECT_LLM", " quiz ", "quiz", "direct_model"):
-        err = validate_loop_input_intent_hint(hint)
-        assert err is not None
-        assert "removed" in err
-
-
-def test_validate_loop_input_intent_hint_allows_direct_and_pass_through() -> None:
+@pytest.mark.asyncio
+async def test_send_input_passes_daemon_and_pass_through_hints() -> None:
+    client = _CapturingClient()
     for hint in (
         TEXT_COMPLETION,
         IMAGE_TO_TEXT,
@@ -39,15 +33,9 @@ def test_validate_loop_input_intent_hint_allows_direct_and_pass_through() -> Non
         "resume_clarification",
         "skill:search",
     ):
-        assert validate_loop_input_intent_hint(hint) is None
-
-
-@pytest.mark.asyncio
-async def test_send_input_rejects_legacy_intent_hint() -> None:
-    client = _CapturingClient()
-    with pytest.raises(ValueError, match="direct_llm is removed"):
-        await client.send_input("loop-1", "hello", intent_hint="direct_llm")
-    assert client.sent == []
+        client.sent.clear()
+        await client.send_input("loop-1", "hello", intent_hint=hint)
+        assert client.sent[-1]["params"]["intent_hint"] == hint
 
 
 @pytest.mark.asyncio

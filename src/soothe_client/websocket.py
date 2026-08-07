@@ -17,7 +17,6 @@ from soothe_sdk.ux.loop_stream import is_stream_terminal_wire_dict
 from soothe_sdk.wire.protocol import decode_websocket_text, encode_websocket_text
 
 from soothe_client.errors import DisconnectCause, ReconnectError, StaleLoopError
-from soothe_client.intent_hints import validate_loop_input_intent_hint
 from soothe_client.stream_terminal import TURN_END_CUSTOM_TYPES, stale_pending_frame_label
 
 logger = logging.getLogger(__name__)
@@ -970,11 +969,6 @@ class WebSocketClient:
                 ``response_schema`` is supported for ``text_completion`` and
                 ``image_to_text``. Agent-path pass-through hints (e.g.
                 ``resume_clarification``, ``skill:foo``) are forwarded unchanged.
-                Legacy ``direct_llm``, ``quiz``, and ``direct_model`` are rejected
-                before send.
-
-        Raises:
-            ValueError: When ``intent_hint`` is a removed legacy value.
             clarification_mode: clarification relay mode for this turn
                 (``"auto"`` / ``"manual"``). ``None`` lets the daemon fall back
                 to its configured default.
@@ -1005,9 +999,6 @@ class WebSocketClient:
         if attachments:
             params["attachments"] = attachments
         if intent_hint:
-            hint_error = validate_loop_input_intent_hint(intent_hint)
-            if hint_error is not None:
-                raise ValueError(hint_error)
             params["intent_hint"] = intent_hint
         if response_schema:
             params["response_schema"] = response_schema

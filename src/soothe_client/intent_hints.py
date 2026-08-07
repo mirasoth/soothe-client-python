@@ -1,4 +1,4 @@
-"""``loop_input.intent_hint`` constants and client-side validation."""
+"""``loop_input.intent_hint`` constants."""
 
 from __future__ import annotations
 
@@ -21,24 +21,3 @@ DEFAULT_DELIVERABLE_PHASES: frozenset[str] = frozenset(
         "embed",
     }
 )
-
-_REMOVED_INTENT_HINT_MESSAGES: dict[str, str] = {
-    "direct_llm": (
-        "intent_hint direct_llm is removed; "
-        "use text_completion (text-only) or image_to_text (with attachments)"
-    ),
-    "quiz": "intent_hint quiz is removed; omit intent_hint and let intake classify the turn",
-    "direct_model": (
-        "intent_hint direct_model is removed; use text_completion, image_to_text, ocr, or embed"
-    ),
-}
-
-
-def validate_loop_input_intent_hint(hint: str) -> str | None:
-    """Return an error message when ``hint`` is a removed legacy value.
-
-    Intent-hint values and agent-path pass-through values (e.g.
-    ``resume_clarification``, ``skill:foo``) are allowed.
-    """
-    key = hint.strip().lower()
-    return _REMOVED_INTENT_HINT_MESSAGES.get(key)
