@@ -66,12 +66,8 @@ async def test_send_input_preserves_other_fields_alongside_mode() -> None:
         "loop-1",
         "go",
         preferred_subagent="deep_research",
-        autonomous=True,
-        max_iterations=5,
         clarification_mode="manual",
     )
     params = _params(client)
     assert params["preferred_subagent"] == "deep_research"
-    assert params["autonomous"] is True
-    assert params["max_iterations"] == 5
     assert params["clarification_mode"] == "manual"

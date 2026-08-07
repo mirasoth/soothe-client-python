@@ -331,18 +331,12 @@ class AsyncCommandClient:
         goal: str,
         *,
         workspace: str | None = None,
-        autonomous: bool = False,
-        max_iterations: int | None = None,
         guidance: str | None = None,
     ) -> dict[str, Any]:
         """Create a background job (root goal). Returns ``job_id`` + status."""
         payload: dict[str, Any] = {"goal": goal}
         if workspace:
             payload["workspace"] = workspace
-        if autonomous:
-            payload["autonomous"] = autonomous
-        if max_iterations:
-            payload["max_iterations"] = max_iterations
         if guidance:
             payload["guidance"] = guidance
         return await self._send_command("job_create", payload)
@@ -518,8 +512,6 @@ class CommandClient:
         goal: str,
         *,
         workspace: str | None = None,
-        autonomous: bool = False,
-        max_iterations: int | None = None,
         guidance: str | None = None,
     ) -> dict[str, Any]:
         """Create a background job (root goal)."""
@@ -529,8 +521,6 @@ class CommandClient:
                 self._client.job_create(
                     goal,
                     workspace=workspace,
-                    autonomous=autonomous,
-                    max_iterations=max_iterations,
                     guidance=guidance,
                 )
             ),

@@ -43,9 +43,9 @@ class _FakeClient:
     ) -> dict[str, Any]:
         self.calls.append(("request", method, dict(params or {}), timeout))
         if method == "loop_new":
-            return {"loop_id": self._loop_id, "autopilot_mode": "solo"}
+            return {"loop_id": self._loop_id}
         if method == "loop_reattach":
-            return {"autopilot_mode": "autopilot"}
+            return {"success": True}
         msg = f"unexpected request method {method}"
         raise AssertionError(msg)
 
@@ -75,7 +75,6 @@ async def test_bootstrap_new_loop_uses_protocol1_request_and_subscribe(tmp_path:
 
     assert result.get("loop_id") == "loop-created"
     assert result.get("success") is True
-    assert result.get("autopilot_mode") == "solo"
 
     # Handshake
     assert ("request_connection_init", None) in client.calls

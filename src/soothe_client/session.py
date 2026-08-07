@@ -21,9 +21,6 @@ _CONNECT_TIMEOUT_S = 5.0
 _DAEMON_READY_TIMEOUT_S = 20.0
 _SESSION_BOOTSTRAP_TIMEOUT_S = 30.0
 
-# Wire-compat: interactive loops are always solo; daemon jobs use AutopilotService.
-_LEGACY_LOOP_AUTOPILOT_MODE = "solo"
-
 
 async def connect_websocket_with_retries(client: Any) -> None:
     """Connect a ``WebSocketClient`` with retries (daemon cold-start safe)."""
@@ -181,8 +178,6 @@ async def bootstrap_loop_session(
         "type": "session_ready",
         "loop_id": loop_id,
         "success": True,
-        # Deprecated wire field: interactive loops are always solo.
-        "autopilot_mode": _LEGACY_LOOP_AUTOPILOT_MODE,
     }
     if mapping_data and mapping_data.get("host_root"):
         result["workspace_mapping"] = mapping_data

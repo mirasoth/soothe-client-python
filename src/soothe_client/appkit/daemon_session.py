@@ -254,8 +254,6 @@ class DaemonSession:
         self,
         text: str,
         *,
-        autonomous: bool = False,
-        max_iterations: int | None = None,
         preferred_subagent: str | None = None,
         model: str | None = None,
         model_params: dict[str, Any] | None = None,
@@ -276,8 +274,6 @@ class DaemonSession:
         await self._client.send_input(
             self._loop_id,
             text,
-            autonomous=autonomous,
-            max_iterations=max_iterations,
             preferred_subagent=preferred_subagent,
             model=model,
             model_params=model_params,

@@ -21,8 +21,6 @@ async def test_job_create_status_cancel(
     created = await client.job_create(
         "echo integration-smoke",
         workspace=str(workspace_dir),
-        autonomous=False,
-        max_iterations=1,
     )
     job_id = created.get("job_id") or created.get("id")
     assert job_id, f"job_create missing id: {created}"

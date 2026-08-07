@@ -194,8 +194,6 @@ class LoopInputParams(ParamsBase):
     Attributes:
         loop_id: Loop identifier (required).
         content: User input text or structured content (required).
-        autonomous: Enable autonomous mode.
-        max_iterations: Max iterations for autonomous mode.
         preferred_subagent: Routing hint.
         model: Provider:model override.
         model_params: Additional model parameters.
@@ -212,8 +210,6 @@ class LoopInputParams(ParamsBase):
 
     loop_id: str = Field(..., min_length=1)
     content: str | dict[str, Any] = Field(..., description="User input text or structured content")
-    autonomous: bool = False
-    max_iterations: int | None = Field(default=None, gt=0)
     preferred_subagent: str | None = None
     model: str | None = None
     model_params: dict[str, Any] | None = None
@@ -424,8 +420,6 @@ class JobCreateParams(ParamsBase):
         goal: Root goal description (required).
         workspace: Optional workspace path.
         user_id: Optional user identifier.
-        autonomous: Enable autonomous mode.
-        max_iterations: Max iterations.
         guidance: Initial guidance.
         intent_hint: Daemon intent_hint (text_completion, image_to_text, ocr, embed).
     """
@@ -433,8 +427,6 @@ class JobCreateParams(ParamsBase):
     goal: str = Field(..., min_length=1, description="Root goal text")
     workspace: str | None = None
     user_id: str | None = None
-    autonomous: bool = False
-    max_iterations: int | None = Field(default=None, gt=0)
     guidance: str | None = None
     intent_hint: str | None = None
 

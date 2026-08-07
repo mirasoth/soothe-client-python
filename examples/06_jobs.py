@@ -31,8 +31,6 @@ async def main() -> None:
     created = await client.job_create(
         "Echo: integration job smoke",
         workspace=str(workspace),
-        autonomous=False,
-        max_iterations=1,
     )
     job_id = created.get("job_id") or created.get("id")
     print("created:", created)

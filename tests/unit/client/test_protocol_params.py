@@ -96,7 +96,6 @@ class TestLoopInputParams:
     def test_valid_string_content(self) -> None:
         params = LoopInputParams(loop_id="abc", content="Hello")
         assert params.content == "Hello"
-        assert params.autonomous is False
 
     def test_valid_dict_content(self) -> None:
         params = LoopInputParams(loop_id="abc", content={"text": "Hi"})
@@ -191,7 +190,6 @@ class TestJobCreateParams:
     def test_valid_with_goal(self) -> None:
         params = JobCreateParams(goal="Build feature X")
         assert params.goal == "Build feature X"
-        assert params.autonomous is False
 
     def test_missing_goal_raises(self) -> None:
         with pytest.raises(ValidationError):
@@ -421,11 +419,11 @@ class TestSerialization:
     """Param models serialize to JSON-safe dicts for the wire."""
 
     def test_loop_input_serializes(self) -> None:
-        params = LoopInputParams(loop_id="abc", content="Hi", autonomous=True)
+        params = LoopInputParams(loop_id="abc", content="Hi", preferred_subagent="planner")
         dumped = params.model_dump(exclude_none=True)
         assert dumped["loop_id"] == "abc"
         assert dumped["content"] == "Hi"
-        assert dumped["autonomous"] is True
+        assert dumped["preferred_subagent"] == "planner"
 
     def test_subscribe_serializes(self) -> None:
         params = SubscribeParams(loop_id="abc", stream_delivery="batch")

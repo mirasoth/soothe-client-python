@@ -939,8 +939,6 @@ class WebSocketClient:
         loop_id: str,
         text: str,
         *,
-        autonomous: bool = False,
-        max_iterations: int | None = None,
         preferred_subagent: str | None = None,
         model: str | None = None,
         model_params: dict[str, Any] | None = None,
@@ -959,8 +957,6 @@ class WebSocketClient:
         Args:
             loop_id: Loop identifier for the subscribed loop.
             text: User input text.
-            autonomous: Enable autonomous iteration mode.
-            max_iterations: Maximum iterations for autonomous mode.
             preferred_subagent: Preferred subagent hint for routing.
             model: Provider:model override string.
             model_params: Additional model parameters.
@@ -998,10 +994,6 @@ class WebSocketClient:
             "loop_id": loop_id,
             "content": text,
         }
-        if autonomous:
-            params["autonomous"] = True
-            if max_iterations is not None:
-                params["max_iterations"] = max_iterations
         if preferred_subagent is not None:
             params["preferred_subagent"] = preferred_subagent
         if model:
