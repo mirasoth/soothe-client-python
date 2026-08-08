@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.13] - 2026-08-08
+
+### Fixed
+- Turn reader no longer binds leftover prior-gen `status=running` or ends on premature `status=stopped` without progress
+- Peel pending `status=idle|stopped` at turn start; continue reading when a successor `status=running` arrives during post-idle drain
+
 ## [1.0.12] - 2026-08-07
 
 ### Changed
