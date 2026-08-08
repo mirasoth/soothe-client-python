@@ -25,6 +25,7 @@ from soothe_client.appkit.loop_session_store import LoopSessionStore, SessionMes
 from soothe_client.appkit.pool import ConnectionPool, PooledConn
 from soothe_client.appkit.query_gate import QueryGate
 from soothe_client.appkit.turn_boundary import TurnBoundary, is_daemon_turn_end_event
+
 Attachment = dict[str, Any]
 OnComplete = Callable[[str, str, str, str, float], None]
 OnError = Callable[[str, str, BaseException], None]

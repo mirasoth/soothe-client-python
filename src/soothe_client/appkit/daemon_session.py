@@ -361,9 +361,8 @@ class DaemonSession:
                 if state == "running":
                     status_turn = frame_turn_id(event)
                     new_gen = parse_turn_generation(status_turn)
-                    if (
-                        new_gen is not None
-                        and new_gen > int(getattr(self, "_last_completed_turn_gen", 0) or 0)
+                    if new_gen is not None and new_gen > int(
+                        getattr(self, "_last_completed_turn_gen", 0) or 0
                     ):
                         push = getattr(self._client, "push_pending_event_front", None)
                         if callable(push):
