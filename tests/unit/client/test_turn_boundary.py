@@ -7,8 +7,10 @@ from soothe_client.turn_boundary import (
     frame_seq,
     frame_turn_id,
     is_idle_terminal_allowed,
+    is_status_terminal_allowed,
     is_turn_terminal_allowed,
     parse_turn_generation,
+    should_bind_running_turn,
     turn_ids_match,
 )
 
@@ -91,4 +93,44 @@ def test_idle_terminal_requires_progress_or_cancel() -> None:
         query_started=True,
         turn_progress_seen=False,
         cancellation_seen=True,
+    )
+
+
+def test_stopped_terminal_matches_idle_gate() -> None:
+    assert not is_status_terminal_allowed(
+        expected_turn_id="L:1",
+        frame_turn_id="L:1",
+        query_started=True,
+        turn_progress_seen=False,
+        cancellation_seen=False,
+    )
+    assert is_status_terminal_allowed(
+        expected_turn_id="L:1",
+        frame_turn_id="L:1",
+        query_started=True,
+        turn_progress_seen=True,
+        cancellation_seen=False,
+    )
+
+
+def test_should_bind_running_turn_respects_completed_floor() -> None:
+    assert should_bind_running_turn(
+        status_turn="L:1",
+        expected_turn_id=None,
+        last_completed_turn_gen=0,
+    )
+    assert not should_bind_running_turn(
+        status_turn="L:1",
+        expected_turn_id=None,
+        last_completed_turn_gen=1,
+    )
+    assert should_bind_running_turn(
+        status_turn="L:2",
+        expected_turn_id=None,
+        last_completed_turn_gen=1,
+    )
+    assert not should_bind_running_turn(
+        status_turn="L:1",
+        expected_turn_id="L:2",
+        last_completed_turn_gen=0,
     )

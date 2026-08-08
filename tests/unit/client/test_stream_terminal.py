@@ -88,3 +88,11 @@ def test_stale_pending_frame_label_matches_peel_vocabulary() -> None:
         is None
     )
     assert stale_pending_frame_label({"type": "status", "state": "running"}) is None
+    assert stale_pending_frame_label({"type": "status", "state": "idle"}) == "status.idle"
+    assert stale_pending_frame_label({"type": "status", "state": "stopped"}) == "status.stopped"
+    assert (
+        stale_pending_frame_label(
+            {"type": "next", "payload": {"type": "status", "state": "stopped"}}
+        )
+        == "status.stopped"
+    )

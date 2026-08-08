@@ -90,7 +90,7 @@ def is_turn_terminal_allowed(
     return turn_ids_match(expected_turn_id, frame_turn_id)
 
 
-def is_idle_terminal_allowed(
+def is_status_terminal_allowed(
     *,
     expected_turn_id: str | None,
     frame_turn_id: str | None,
@@ -98,11 +98,14 @@ def is_idle_terminal_allowed(
     turn_progress_seen: bool,
     cancellation_seen: bool = False,
 ) -> bool:
-    """Gate for ``status=idle`` soft-complete.
+    """Gate for ``status=idle`` / ``status=stopped`` soft-complete.
 
     Requires a bound turn. Matching ``turn_id`` needs progress or cancel.
-    Absent idle ``turn_id`` is allowed only when cancellation was already seen
+    Absent status ``turn_id`` is allowed only when cancellation was already seen
     (legacy cancel finalize); mismatched ids are always rejected.
+
+    ``stopped`` must use the same progress gate as ``idle`` so leftover prior-turn
+    ``stopped`` cannot end a reader that only bound a stale ``status=running``.
     """
     if not query_started or not str(expected_turn_id or "").strip():
         return False
@@ -111,8 +114,53 @@ def is_idle_terminal_allowed(
         if not turn_ids_match(expected_turn_id, cand):
             return False
         return bool(turn_progress_seen or cancellation_seen)
-    # Absent idle turn_id: never end a healthy turn; cancel path only.
+    # Absent status turn_id: never end a healthy turn; cancel path only.
     return bool(cancellation_seen)
+
+
+def is_idle_terminal_allowed(
+    *,
+    expected_turn_id: str | None,
+    frame_turn_id: str | None,
+    query_started: bool,
+    turn_progress_seen: bool,
+    cancellation_seen: bool = False,
+) -> bool:
+    """Gate for ``status=idle`` soft-complete (alias of status terminal rules)."""
+    return is_status_terminal_allowed(
+        expected_turn_id=expected_turn_id,
+        frame_turn_id=frame_turn_id,
+        query_started=query_started,
+        turn_progress_seen=turn_progress_seen,
+        cancellation_seen=cancellation_seen,
+    )
+
+
+def should_bind_running_turn(
+    *,
+    status_turn: str | None,
+    expected_turn_id: str | None,
+    last_completed_turn_gen: int = 0,
+) -> bool:
+    """True when a stamped ``status=running`` may bind/rebind ``expected_turn_id``.
+
+    Refuses generations at or below the last completed floor (leftover prior-turn
+    ``running`` when ``expected`` is still unset) and older gens than the current
+    bind.
+    """
+    if not status_turn:
+        return False
+    new_gen = parse_turn_generation(status_turn)
+    if new_gen is not None and last_completed_turn_gen > 0 and new_gen <= last_completed_turn_gen:
+        return False
+    if expected_turn_id is None:
+        return True
+    old_gen = parse_turn_generation(expected_turn_id)
+    if new_gen is None:
+        return old_gen is None
+    if old_gen is None:
+        return True
+    return new_gen >= old_gen
 
 
 __all__ = [
@@ -120,7 +168,9 @@ __all__ = [
     "frame_seq",
     "frame_turn_id",
     "is_idle_terminal_allowed",
+    "is_status_terminal_allowed",
     "is_turn_terminal_allowed",
     "parse_turn_generation",
+    "should_bind_running_turn",
     "turn_ids_match",
 ]

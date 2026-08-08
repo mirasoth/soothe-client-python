@@ -27,9 +27,10 @@ from soothe_client.stream_terminal import (
 from soothe_client.turn_boundary import (
     frame_seq,
     frame_turn_id,
-    is_idle_terminal_allowed,
+    is_status_terminal_allowed,
     is_turn_terminal_allowed,
     parse_turn_generation,
+    should_bind_running_turn,
     turn_ids_match,
 )
 from soothe_client.websocket import WebSocketClient
@@ -94,7 +95,12 @@ class DaemonSession:
         # Scoped to the current peer seq namespace: reset on reconnect / loop
         # change — daemon seq is per-process and restarts after daemon restart.
         self._last_turn_end_seq: int = 0
+        # Last accepted terminal's turn generation (refuse leftover prior-gen
+        # status=running binds when expected_turn_id is still unset).
+        self._last_completed_turn_gen: int = 0
         self._expected_turn_id: str | None = None
+        # Set by post-idle drain when a successor status=running is re-queued.
+        self._drain_saw_successor_running: bool = False
 
     def _reset_turn_seq_floor(self) -> None:
         """Clear seq/turn filters when the peer seq namespace may have restarted.
@@ -104,7 +110,26 @@ class DaemonSession:
         ``status=running`` — leaving ``query_started=False`` and a silent TUI.
         """
         self._last_turn_end_seq = 0
+        self._last_completed_turn_gen = 0
         self._expected_turn_id = None
+
+    def _note_completed_turn_gen(self, turn_id: str | None) -> None:
+        """Raise the completed-generation floor after an accepted terminal."""
+        floor = int(getattr(self, "_last_completed_turn_gen", 0) or 0)
+        gen = parse_turn_generation(turn_id)
+        if gen is not None and gen > floor:
+            self._last_completed_turn_gen = gen
+
+    def _ensure_turn_floor_attrs(self) -> None:
+        """Initialize turn-floor attrs for partially constructed sessions (tests)."""
+        if not hasattr(self, "_last_completed_turn_gen"):
+            self._last_completed_turn_gen = 0
+        if not hasattr(self, "_last_turn_end_seq"):
+            self._last_turn_end_seq = 0
+        if not hasattr(self, "_drain_saw_successor_running"):
+            self._drain_saw_successor_running = False
+        if not hasattr(self, "_expected_turn_id"):
+            self._expected_turn_id = None
 
     @property
     def client(self) -> WebSocketClient:
@@ -298,7 +323,13 @@ class DaemonSession:
         *,
         expected_loop_id: str | None,
     ) -> AsyncIterator[tuple[tuple[Any, ...], str, Any]]:
-        """Yield stream chunks that arrive just after ``idle``."""
+        """Yield stream chunks that arrive just after ``idle``.
+
+        If a successor ``status=running`` (generation above the completed floor)
+        arrives, re-queue it and set ``_drain_saw_successor_running`` so the
+        caller can continue the reader instead of ending the turn.
+        """
+        self._drain_saw_successor_running = False
         loop = asyncio.get_running_loop()
         deadline = loop.time() + self._drain_deadline
         exp = expected_loop_id
@@ -309,6 +340,7 @@ class DaemonSession:
                 break
             if not event:
                 break
+            raw_event = event
             event_type = event.get("type", "")
             if event_type == "next":
                 event = unwrap_next(event) or event
@@ -325,6 +357,22 @@ class DaemonSession:
                 if isinstance(loop_ev, str) and loop_ev:
                     self._loop_id = loop_ev
                     exp = loop_ev
+                state = str(event.get("state") or "").strip().lower()
+                if state == "running":
+                    status_turn = frame_turn_id(event)
+                    new_gen = parse_turn_generation(status_turn)
+                    if (
+                        new_gen is not None
+                        and new_gen > int(getattr(self, "_last_completed_turn_gen", 0) or 0)
+                    ):
+                        push = getattr(self._client, "push_pending_event_front", None)
+                        if callable(push):
+                            push(raw_event)
+                        else:
+                            # Fallback: put unwrapped event if client lacks helper.
+                            self._client._pending_events.appendleft(event)  # noqa: SLF001
+                        self._drain_saw_successor_running = True
+                        return
                 continue
             if event_type != "event":
                 continue
@@ -360,6 +408,7 @@ class DaemonSession:
                 raises ``TimeoutError`` if the daemon never emits a turn-end
                 signal in time.
         """
+        self._ensure_turn_floor_attrs()
         self.turn_event_stats = self._new_turn_stats()
         self.last_turn_end_state = None
         self.last_turn_cancellation_seen = False
@@ -491,61 +540,73 @@ class DaemonSession:
                             expected_loop_id = loop_ev
                         state = event.get("state", "")
                         if state == "running":
-                            query_started = True
-                            progress_seen = True
                             status_turn = frame_turn_id(event)
                             # Bind only from running frames that carry turn_id.
                             # Pre-admit early running omits turn_id and must not
                             # unlock terminals or poison the expected id.
                             if status_turn:
-                                new_gen = parse_turn_generation(status_turn)
-                                old_gen = parse_turn_generation(expected_turn_id)
-                                if expected_turn_id is None or (
-                                    new_gen is not None and (old_gen is None or new_gen >= old_gen)
+                                completed_gen = int(
+                                    getattr(self, "_last_completed_turn_gen", 0) or 0
+                                )
+                                if not should_bind_running_turn(
+                                    status_turn=status_turn,
+                                    expected_turn_id=expected_turn_id,
+                                    last_completed_turn_gen=completed_gen,
                                 ):
-                                    if expected_turn_id and status_turn != expected_turn_id:
-                                        # Successor turn admitted while this reader
-                                        # still held a stale/early binding.
-                                        turn_progress_seen = False
-                                    expected_turn_id = status_turn
-                                    self._expected_turn_id = status_turn
-                        elif query_started and state == "stopped":
-                            stop_turn = frame_turn_id(event)
-                            if expected_turn_id and not turn_ids_match(expected_turn_id, stop_turn):
-                                continue
-                            self.last_turn_end_state = state
-                            if ev_seq is not None:
-                                self._last_turn_end_seq = max(self._last_turn_end_seq, ev_seq)
-                            async for chunk in self._drain_stream_events_after_idle(
-                                expected_loop_id=expected_loop_id,
-                            ):
-                                yield chunk
-                            break
-                        elif query_started and state == "idle":
-                            idle_turn = frame_turn_id(event)
-                            if not is_idle_terminal_allowed(
+                                    logger.debug(
+                                        "Ignoring stale/older status=running "
+                                        "(loop=%s turn=%s expected=%s completed_gen=%s)",
+                                        (expected_loop_id or "?")[:16],
+                                        status_turn[-24:],
+                                        (expected_turn_id or "<none>")[-24:],
+                                        completed_gen,
+                                    )
+                                    continue
+                                if expected_turn_id and status_turn != expected_turn_id:
+                                    # Successor turn admitted while this reader
+                                    # still held a stale/early binding.
+                                    turn_progress_seen = False
+                                expected_turn_id = status_turn
+                                self._expected_turn_id = status_turn
+                                query_started = True
+                                progress_seen = True
+                            else:
+                                # Pre-admit early running: query start, no bind.
+                                query_started = True
+                                progress_seen = True
+                        elif query_started and state in {"stopped", "idle"}:
+                            status_turn = frame_turn_id(event)
+                            if not is_status_terminal_allowed(
                                 expected_turn_id=expected_turn_id,
-                                frame_turn_id=idle_turn,
+                                frame_turn_id=status_turn,
                                 query_started=query_started,
                                 turn_progress_seen=turn_progress_seen,
                                 cancellation_seen=self.last_turn_cancellation_seen,
                             ):
                                 logger.debug(
-                                    "Ignoring premature idle "
-                                    "(loop=%s bound=%s idle_turn=%s progress=%s)",
+                                    "Ignoring premature %s "
+                                    "(loop=%s bound=%s status_turn=%s progress=%s)",
+                                    state,
                                     (expected_loop_id or "?")[:16],
                                     bool(expected_turn_id),
-                                    (idle_turn or "<absent>")[-24:],
+                                    (status_turn or "<absent>")[-24:],
                                     turn_progress_seen,
                                 )
                                 continue
                             self.last_turn_end_state = state
                             if ev_seq is not None:
                                 self._last_turn_end_seq = max(self._last_turn_end_seq, ev_seq)
+                            self._note_completed_turn_gen(expected_turn_id)
                             async for chunk in self._drain_stream_events_after_idle(
                                 expected_loop_id=expected_loop_id,
                             ):
                                 yield chunk
+                            if self._drain_saw_successor_running:
+                                # Successor turn already re-queued; continue reading.
+                                turn_progress_seen = False
+                                expected_turn_id = None
+                                self._expected_turn_id = None
+                                continue
                             break
                         continue
 
@@ -608,10 +669,16 @@ class DaemonSession:
                             self.last_turn_end_state = "completed"
                         if ev_seq is not None:
                             self._last_turn_end_seq = max(self._last_turn_end_seq, ev_seq)
+                        self._note_completed_turn_gen(expected_turn_id)
                         async for chunk in self._drain_stream_events_after_idle(
                             expected_loop_id=expected_loop_id,
                         ):
                             yield chunk
+                        if self._drain_saw_successor_running:
+                            turn_progress_seen = False
+                            expected_turn_id = None
+                            self._expected_turn_id = None
+                            continue
                         break
                     if mode == "updates" and isinstance(data, dict) and "__interrupt__" in data:
                         continue

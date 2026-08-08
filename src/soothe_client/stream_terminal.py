@@ -105,6 +105,14 @@ def stale_pending_frame_label(event: dict[str, Any]) -> str | None:
     if event_type in STALE_TURN_PENDING_TYPES:
         return event_type
 
+    # Leftover terminal status from the prior turn must not bind/kill the next
+    # reader. Keep ``status=running`` — attach / live-query paths need it.
+    if event_type == "status":
+        state = str(event.get("state") or "").strip().lower()
+        if state in {"idle", "stopped"}:
+            return f"status.{state}"
+        return None
+
     if event_type == "next":
         payload = event.get("payload")
         if not isinstance(payload, dict):
@@ -115,6 +123,10 @@ def stale_pending_frame_label(event: dict[str, Any]) -> str | None:
         inner = payload.get("data")
         if isinstance(inner, dict):
             return stale_pending_frame_label(inner)
+        # Bare status nested under next.payload
+        nested_type = str(payload.get("type") or "")
+        if nested_type == "status":
+            return stale_pending_frame_label(payload)
         return None
 
     if event_type == "event":

@@ -340,6 +340,21 @@ def test_peel_stale_pending_prior_turn_terminal_frames() -> None:
     assert client._pending_events[1]["type"] == "status"
 
 
+def test_peel_stale_pending_status_idle_and_stopped() -> None:
+    """Leftover status=idle/stopped must peel; status=running must remain."""
+    client = WebSocketClient()
+    client._pending_events.append({"type": "status", "state": "idle", "loop_id": "L1"})
+    client._pending_events.append({"type": "status", "state": "stopped", "loop_id": "L1"})
+    client._pending_events.append({"type": "status", "state": "running", "loop_id": "L1"})
+
+    removed = client.peel_stale_pending_control_events()
+
+    assert "status.idle" in removed
+    assert "status.stopped" in removed
+    assert len(client._pending_events) == 1
+    assert client._pending_events[0]["state"] == "running"
+
+
 # ---------------------------------------------------------------------------
 # Background reader delivery
 # ---------------------------------------------------------------------------

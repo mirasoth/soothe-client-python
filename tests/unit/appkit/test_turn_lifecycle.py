@@ -266,12 +266,34 @@ def test_turn_boundary_rejects_absent_turn_id() -> None:
     assert not b.feed({"type": "status", "state": "idle"})[0]
 
 
-def test_turn_boundary_stopped_after_running() -> None:
+def test_turn_boundary_stopped_requires_progress() -> None:
+    """``stopped`` must not end a turn that only saw status=running (no progress)."""
     b = TurnBoundary()
     assert not b.feed({"type": "status", "state": "stopped"})[0]
     b.feed({"type": "status", "state": "running", "turn_id": "L:1"})
+    assert not b.feed({"type": "status", "state": "stopped", "turn_id": "L:1"})[0]
+    b.feed(
+        {
+            "type": "event",
+            "mode": "messages",
+            "turn_id": "L:1",
+            "data": [{"type": "AIMessageChunk", "content": "x"}],
+        }
+    )
     ended, reason = b.feed({"type": "status", "state": "stopped", "turn_id": "L:1"})
     assert ended and reason == TURN_END_STOPPED
+    assert b.gate.last_completed_turn_gen == 1
+
+
+def test_turn_boundary_refuses_stale_running_after_completed_gen() -> None:
+    b = TurnBoundary()
+    b.gate.last_completed_turn_gen = 1
+    b.feed({"type": "status", "state": "running", "turn_id": "L:1"})
+    assert b.gate.expected_turn_id is None
+    assert b.gate.saw_running is False
+    b.feed({"type": "status", "state": "running", "turn_id": "L:2"})
+    assert b.gate.expected_turn_id == "L:2"
+    assert b.gate.saw_running is True
 
 
 def test_is_daemon_turn_end_event() -> None:

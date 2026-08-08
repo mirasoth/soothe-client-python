@@ -16,10 +16,10 @@ from soothe_client.stream_terminal import (
 )
 from soothe_client.turn_boundary import (
     frame_turn_id,
-    is_idle_terminal_allowed,
+    is_status_terminal_allowed,
     is_turn_terminal_allowed,
     parse_turn_generation,
-    turn_ids_match,
+    should_bind_running_turn,
 )
 
 TURN_END_STREAM_END = STREAM_END
@@ -35,6 +35,7 @@ class TurnLifecycleGate:
     saw_turn_progress: bool = False
     expected_turn_id: str | None = None
     cancellation_seen: bool = False
+    last_completed_turn_gen: int = 0
 
     def observe(self, msg: Any) -> None:
         frame = _normalize_frame(msg)
@@ -43,17 +44,24 @@ class TurnLifecycleGate:
         typ = str(frame.get("type") or "")
         if typ == "status":
             if str(frame.get("state") or "").strip().lower() == "running":
-                self.saw_running = True
                 status_turn = frame_turn_id(frame)
                 if status_turn:
-                    new_gen = parse_turn_generation(status_turn)
-                    old_gen = parse_turn_generation(self.expected_turn_id)
-                    if self.expected_turn_id is None or (
-                        new_gen is not None and (old_gen is None or new_gen >= old_gen)
+                    if not should_bind_running_turn(
+                        status_turn=status_turn,
+                        expected_turn_id=self.expected_turn_id,
+                        last_completed_turn_gen=self.last_completed_turn_gen,
                     ):
-                        if self.expected_turn_id and status_turn != self.expected_turn_id:
-                            self.saw_turn_progress = False
-                        self.expected_turn_id = status_turn
+                        return
+                    if self.expected_turn_id and status_turn != self.expected_turn_id:
+                        # Successor turn admitted while this reader
+                        # still held a stale/early binding.
+                        self.saw_turn_progress = False
+                    self.expected_turn_id = status_turn
+                    self.saw_running = True
+                else:
+                    # Pre-admit early running omits turn_id — mark query start
+                    # without binding (DaemonSession parity).
+                    self.saw_running = True
             return
         if typ == "event":
             mode = str(frame.get("mode") or "")
@@ -68,14 +76,23 @@ class TurnLifecycleGate:
             turn_progress_seen=self.saw_turn_progress,
         )
 
-    def allow_idle_complete(self, frame_turn: str | None) -> bool:
-        return is_idle_terminal_allowed(
+    def allow_status_complete(self, frame_turn: str | None) -> bool:
+        return is_status_terminal_allowed(
             expected_turn_id=self.expected_turn_id,
             frame_turn_id=frame_turn,
             query_started=self.saw_running,
             turn_progress_seen=self.saw_turn_progress,
             cancellation_seen=self.cancellation_seen,
         )
+
+    def allow_idle_complete(self, frame_turn: str | None) -> bool:
+        return self.allow_status_complete(frame_turn)
+
+    def note_completed_turn(self, turn_id: str | None) -> None:
+        """Raise the completed-generation floor after an accepted terminal."""
+        gen = parse_turn_generation(turn_id)
+        if gen is not None and gen > self.last_completed_turn_gen:
+            self.last_completed_turn_gen = gen
 
 
 @dataclass
@@ -98,14 +115,9 @@ class TurnBoundary:
         if typ == "status":
             state = str(frame.get("state") or "").strip().lower()
             frame_turn = frame_turn_id(frame)
-            if state == "stopped" and self.gate.saw_running:
-                if self.gate.expected_turn_id and not turn_ids_match(
-                    self.gate.expected_turn_id, frame_turn
-                ):
-                    return False, ""
-                return self._mark(TURN_END_STOPPED)
-            if state == "idle" and self.gate.allow_idle_complete(frame_turn):
-                return self._mark(TURN_END_IDLE)
+            if state in {"stopped", "idle"} and self.gate.allow_status_complete(frame_turn):
+                self.gate.note_completed_turn(self.gate.expected_turn_id)
+                return self._mark(TURN_END_STOPPED if state == "stopped" else TURN_END_IDLE)
             return False, ""
 
         if typ == "event":
@@ -119,6 +131,7 @@ class TurnBoundary:
                 and is_turn_end_custom_data(data)
                 and self.gate.allow_stream_end(data_turn)
             ):
+                self.gate.note_completed_turn(self.gate.expected_turn_id)
                 return self._mark(TURN_END_STREAM_END)
         return False, ""
 

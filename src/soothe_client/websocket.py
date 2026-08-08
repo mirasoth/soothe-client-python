@@ -1539,6 +1539,10 @@ class WebSocketClient:
         """
         self._pending_events.clear()
 
+    def push_pending_event_front(self, event: dict[str, Any]) -> None:
+        """Re-queue ``event`` at the front of ``_pending_events`` (successor bind)."""
+        self._pending_events.appendleft(event)
+
     def peel_stale_pending_control_events(self) -> list[str]:
         """Remove stale handshake/terminal frames left in ``_pending_events`` before a turn.
 

@@ -64,6 +64,7 @@ async def test_ensure_connected_uses_reattach_and_probe() -> None:
     session = DaemonSession("ws://127.0.0.1:9")
     session._loop_id = "loop-alive"
     session._last_turn_end_seq = 2655
+    session._last_completed_turn_gen = 3
     session._expected_turn_id = "loop-alive:3"
     session._client.is_connection_alive = MagicMock(return_value=False)
     session._client.is_disconnected = MagicMock(return_value=True)
@@ -80,6 +81,7 @@ async def test_ensure_connected_uses_reattach_and_probe() -> None:
     assert session._rpc_connected is False
     # Daemon restart / reconnect: peer seq may restart at 1.
     assert session._last_turn_end_seq == 0
+    assert session._last_completed_turn_gen == 0
     assert session._expected_turn_id is None
 
 
@@ -728,3 +730,133 @@ async def test_fetch_execution_state_rpc_error_returns_default() -> None:
     assert state.iteration == 0
     assert state.status is None
     assert state.plan is None
+
+
+@pytest.mark.asyncio
+async def test_iter_turn_chunks_refuses_stale_running_after_completed_gen() -> None:
+    """Leftover prior-gen status=running must not bind or unlock terminals."""
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
+    session._loop_id = "L1"
+    session._last_completed_turn_gen = 1
+
+    events = [
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:1"},
+        {"type": "status", "state": "stopped", "loop_id": "L1", "turn_id": "L1:1"},
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:2"},
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "turn_id": "L1:2",
+            "namespace": ["n"],
+            "mode": "messages",
+            "data": {"type": "ai", "content": "hi"},
+        },
+        {"type": "status", "state": "idle", "loop_id": "L1", "turn_id": "L1:2"},
+        None,
+    ]
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=events),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    chunks = [c async for c in session.iter_turn_chunks()]
+    assert chunks == [(("n",), "messages", {"type": "ai", "content": "hi"})]
+    assert session.last_turn_end_state == "idle"
+    assert session._last_completed_turn_gen == 2
+
+
+@pytest.mark.asyncio
+async def test_iter_turn_chunks_ignores_stopped_without_progress() -> None:
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
+    session._loop_id = "L1"
+
+    events = [
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:1"},
+        {"type": "status", "state": "stopped", "loop_id": "L1", "turn_id": "L1:1"},
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "turn_id": "L1:1",
+            "namespace": ["n"],
+            "mode": "messages",
+            "data": {"type": "ai", "content": "hi"},
+        },
+        {"type": "status", "state": "stopped", "loop_id": "L1", "turn_id": "L1:1"},
+        None,
+    ]
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=events),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    chunks = [c async for c in session.iter_turn_chunks()]
+    assert chunks == [(("n",), "messages", {"type": "ai", "content": "hi"})]
+    assert session.last_turn_end_state == "stopped"
+    assert session._last_completed_turn_gen == 1
+
+
+@pytest.mark.asyncio
+async def test_iter_turn_chunks_continues_on_successor_running_during_drain() -> None:
+    """Successor status=running during post-idle drain rebinds instead of ending."""
+    from collections import deque
+
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.5)
+    session._loop_id = "L1"
+
+    pending: deque[dict] = deque()
+    main_events = deque(
+        [
+            {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:1"},
+            {
+                "type": "event",
+                "loop_id": "L1",
+                "turn_id": "L1:1",
+                "namespace": ["n"],
+                "mode": "messages",
+                "data": {"type": "ai", "content": "a"},
+            },
+            {"type": "status", "state": "idle", "loop_id": "L1", "turn_id": "L1:1"},
+            # Seen during drain — requeued, then consumed as successor bind.
+            {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:2"},
+            {
+                "type": "event",
+                "loop_id": "L1",
+                "turn_id": "L1:2",
+                "namespace": ["n"],
+                "mode": "messages",
+                "data": {"type": "ai", "content": "b"},
+            },
+            {"type": "status", "state": "idle", "loop_id": "L1", "turn_id": "L1:2"},
+            None,
+        ]
+    )
+
+    async def read_event() -> dict | None:
+        if pending:
+            return pending.popleft()
+        if not main_events:
+            return None
+        return main_events.popleft()
+
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=read_event),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        push_pending_event_front=lambda ev: pending.appendleft(ev),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    chunks = [c async for c in session.iter_turn_chunks()]
+    assert chunks == [
+        (("n",), "messages", {"type": "ai", "content": "a"}),
+        (("n",), "messages", {"type": "ai", "content": "b"}),
+    ]
+    assert session.last_turn_end_state == "idle"
+    assert session._last_completed_turn_gen == 2
