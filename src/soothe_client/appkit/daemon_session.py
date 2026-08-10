@@ -396,6 +396,7 @@ class DaemonSession:
         self,
         *,
         max_wait_s: float | None = None,
+        idle_timeout_s: float | None = None,
     ) -> AsyncIterator[tuple[tuple[Any, ...], str, Any]]:
         """Yield ``(namespace, mode, data)`` stream chunks until the turn ends.
 
@@ -406,6 +407,13 @@ class DaemonSession:
             max_wait_s: Optional absolute deadline for the whole turn. When set,
                 raises ``TimeoutError`` if the daemon never emits a turn-end
                 signal in time.
+            idle_timeout_s: Optional hard cap on how long to wait for the *first*
+                progress event before giving up. When set and no progress is seen
+                within this many seconds, raises ``TimeoutError`` instead of the
+                default 30s-log-and-reset behavior. Used by attach-only reads
+                (``skip_daemon_send_turn``) so a stale ``live`` probe that turns
+                out to have no real follow-on turn does not spin the thinking
+                row for minutes.
         """
         self._ensure_turn_floor_attrs()
         self.turn_event_stats = self._new_turn_stats()
@@ -426,6 +434,12 @@ class DaemonSession:
         turn_read_started = time.monotonic()
         first_event_logged = False
         progress_seen = False
+        # Wall-clock of the last *real* progress (a yielded chunk). A stale
+        # ``status=running`` frame sets ``progress_seen`` but yields nothing;
+        # for the attach-only idle timeout we need a signal that advances when
+        # the daemon actually streams content, not when it merely re-announces
+        # a (possibly stale) running status.
+        last_real_progress_at = turn_read_started
         absolute_deadline = (
             time.monotonic() + max_wait_s if max_wait_s is not None and max_wait_s > 0 else None
         )
@@ -446,15 +460,31 @@ class DaemonSession:
                             f"Turn timed out after {max_wait_s:.0f}s "
                             f"(loop={expected_loop_id or '?'})"
                         )
-                    if not progress_seen and time.monotonic() - turn_read_started > 30.0:
-                        logger.warning(
-                            "No daemon stream progress after %.0fs (loop=%s, "
-                            "query_started=%s); check daemon sender / WebSocket reader",
-                            time.monotonic() - turn_read_started,
-                            (expected_loop_id or "?")[:16],
-                            query_started,
+                    if not progress_seen:
+                        elapsed = time.monotonic() - turn_read_started
+                        if elapsed > 30.0:
+                            logger.warning(
+                                "No daemon stream progress after %.0fs (loop=%s, "
+                                "query_started=%s); check daemon sender / WebSocket reader",
+                                elapsed,
+                                (expected_loop_id or "?")[:16],
+                                query_started,
+                            )
+                            turn_read_started = time.monotonic()
+                    # Attach-only idle timeout: even after a stale
+                    # ``status=running`` sets ``progress_seen``, no real content
+                    # may ever arrive (the runner already exited). Bound the wait
+                    # for the first yielded chunk so the TUI falls back instead
+                    # of spinning the thinking row for minutes.
+                    if (
+                        idle_timeout_s is not None
+                        and idle_timeout_s > 0
+                        and time.monotonic() - last_real_progress_at > idle_timeout_s
+                    ):
+                        raise TimeoutError(
+                            f"No daemon stream progress within {idle_timeout_s:.0f}s "
+                            f"attach window (loop={expected_loop_id or '?'})"
                         )
-                        turn_read_started = time.monotonic()
                     event = await self._client.read_event()
                     if event and not first_event_logged:
                         first_event_logged = True
@@ -653,6 +683,7 @@ class DaemonSession:
                             continue
 
                     progress_seen = True
+                    last_real_progress_at = time.monotonic()
                     if is_turn_progress_chunk(mode, data):
                         turn_progress_seen = True
                     yield (namespace, mode, data)
@@ -844,9 +875,10 @@ class DaemonSession:
         """Fetch execution-progress snapshot (plan, step_index, iteration, status).
 
         Returns a namespace with ``plan``, ``step_index``, ``iteration``,
-        ``status`` for the loop's bound checkpoint thread. On RPC failure the
-        fields degrade gracefully (``step_index=0``, ``iteration=0``,
-        ``status=None``, ``plan=None``) so a resume gate can still proceed.
+        ``status``, and ``active_runner`` for the loop's bound checkpoint
+        thread. On RPC failure the fields degrade gracefully (``step_index=0``,
+        ``iteration=0``, ``status=None``, ``plan=None``, ``active_runner=False``)
+        so a resume gate can still proceed.
         """
         lid = str(loop_id or "").strip()
         empty = SimpleNamespace(
@@ -854,6 +886,7 @@ class DaemonSession:
             step_index=0,
             iteration=0,
             status=None,
+            active_runner=False,
             loop_id=lid or None,
             success=False,
         )
@@ -881,12 +914,21 @@ class DaemonSession:
         iteration = iteration_raw if isinstance(iteration_raw, int) else 0
         status_raw = resp.get("status")
         status = status_raw if isinstance(status_raw, str) else None
+        # ``active_runner`` is absent on daemons older than this field; treat
+        # absence as unknown (None) so callers can fall back to status only.
+        active_runner_raw = resp.get("active_runner")
+        active_runner: bool | None
+        if isinstance(active_runner_raw, bool):
+            active_runner = active_runner_raw
+        else:
+            active_runner = None
         success = bool(resp.get("success", True))
         return SimpleNamespace(
             plan=plan,
             step_index=step_index,
             iteration=iteration,
             status=status,
+            active_runner=active_runner,
             loop_id=resp.get("loop_id", lid),
             success=success,
         )

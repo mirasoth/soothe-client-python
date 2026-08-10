@@ -681,6 +681,30 @@ async def test_iter_turn_chunks_max_wait_raises_timeout() -> None:
 
 
 @pytest.mark.asyncio
+async def test_iter_turn_chunks_idle_timeout_raises_attach_timeout() -> None:
+    """An attach-only read with no progress raises the attach-idle timeout."""
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
+    session._loop_id = "L1"
+
+    async def never_progress() -> dict | None:
+        # Return running status forever but never set progress_seen.
+        await asyncio.sleep(0.01)
+        return {"type": "status", "state": "running", "loop_id": "L1"}
+
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=never_progress),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    with pytest.raises(TimeoutError, match="attach window"):
+        async for _ in session.iter_turn_chunks(idle_timeout_s=0.05):
+            pass
+
+
+@pytest.mark.asyncio
 async def test_fetch_execution_state_maps_payload() -> None:
     session = DaemonSession("ws://127.0.0.1:9")
     session._rpc_connected = True
@@ -691,6 +715,7 @@ async def test_fetch_execution_state_maps_payload() -> None:
             "step_index": 1,
             "iteration": 3,
             "status": "running",
+            "active_runner": True,
         }
     )
     state = await session.fetch_execution_state("loop-abc")
@@ -699,12 +724,31 @@ async def test_fetch_execution_state_maps_payload() -> None:
     assert state.step_index == 1
     assert state.iteration == 3
     assert state.status == "running"
+    assert state.active_runner is True
     assert state.plan == {"steps": [{"id": "s1"}, {"id": "s2"}]}
     session._rpc_client.request.assert_awaited_once_with(
         "loop_execution_state_fetch",
         {"loop_id": "loop-abc"},
         timeout=30.0,
     )
+
+
+@pytest.mark.asyncio
+async def test_fetch_execution_state_absent_active_runner_is_none() -> None:
+    """Daemons predating the active_runner field yield None (not False)."""
+    session = DaemonSession("ws://127.0.0.1:9")
+    session._rpc_connected = True
+    session._rpc_client.request = AsyncMock(
+        return_value={
+            "loop_id": "loop-abc",
+            "plan": None,
+            "step_index": 0,
+            "iteration": 0,
+            "status": "running",
+        }
+    )
+    state = await session.fetch_execution_state("loop-abc")
+    assert state.active_runner is None
 
 
 @pytest.mark.asyncio
@@ -715,6 +759,7 @@ async def test_fetch_execution_state_empty_loop_id_returns_default() -> None:
     assert state.step_index == 0
     assert state.iteration == 0
     assert state.status is None
+    assert state.active_runner is False
     assert state.plan is None
     assert state.loop_id is None
 
@@ -729,6 +774,7 @@ async def test_fetch_execution_state_rpc_error_returns_default() -> None:
     assert state.step_index == 0
     assert state.iteration == 0
     assert state.status is None
+    assert state.active_runner is False
     assert state.plan is None
 
 
