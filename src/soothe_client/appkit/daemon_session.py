@@ -695,7 +695,7 @@ class DaemonSession:
         """Return skill rows from the daemon catalog."""
         async with self._rpc_lock:
             await self._ensure_rpc_connected()
-            response = await self._rpc_client.list_skills(timeout=15.0)
+            response = await self._rpc_client.list_skills(workspace=self._workspace, timeout=15.0)
         skills = response.get("skills", [])
         if not isinstance(skills, list):
             return []

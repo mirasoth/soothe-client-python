@@ -1232,9 +1232,14 @@ class WebSocketClient:
         except Exception as exc:
             raise StaleLoopError(lid, exc) from exc
 
-    async def list_skills(self, *, timeout: float = 15.0) -> dict[str, Any]:
+    async def list_skills(
+        self, *, workspace: str | None = None, timeout: float = 15.0
+    ) -> dict[str, Any]:
         """Request wire-safe skill metadata from the daemon."""
-        return await self.request("skills_list", {}, timeout=timeout)
+        params: dict[str, Any] = {}
+        if workspace:
+            params["workspace"] = str(workspace).strip()
+        return await self.request("skills_list", params, timeout=timeout)
 
     async def list_models(self, *, timeout: float = 15.0) -> dict[str, Any]:
         """Request model catalog rows from the daemon host ``SootheConfig``."""
