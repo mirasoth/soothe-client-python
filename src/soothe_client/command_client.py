@@ -27,6 +27,12 @@ logger = logging.getLogger(__name__)
 _TRANSITIONAL_DAEMON_READY_STATES = frozenset({"starting", "warming"})
 _DAEMON_READY_POLL_INTERVAL_S = 0.05
 
+# Align with soothe_daemon.config.models.WebSocketConfig.max_frame_size (default 10 MiB)
+# and WebSocketClient._DEFAULT_MAX_FRAME_SIZE. The websockets library defaults
+# max_size to 1 MiB, which closes the connection (1009) when the daemon replies
+# with larger JSON payloads (e.g. autopilot goal forests) to command RPCs.
+_DEFAULT_MAX_FRAME_SIZE = 10 * 1024 * 1024
+
 try:
     from soothe_sdk import __version__ as _client_version
 except Exception:  # pragma: no cover
@@ -151,11 +157,21 @@ class AsyncCommandClient:
     Args:
         ws_url: Daemon WebSocket URL (e.g. ``ws://127.0.0.1:8765``).
         timeout: Per-command timeout in seconds.
+        max_frame_size: Maximum incoming WebSocket message size in bytes. Should be
+            at least the daemon's ``transport.websocket.max_frame_size`` when that
+            is customized; defaults to 10 MiB to match the daemon default.
     """
 
-    def __init__(self, ws_url: str, *, timeout: float = 30.0) -> None:
+    def __init__(
+        self,
+        ws_url: str,
+        *,
+        timeout: float = 30.0,
+        max_frame_size: int = _DEFAULT_MAX_FRAME_SIZE,
+    ) -> None:
         self._ws_url = ws_url.rstrip("/")
         self._timeout = timeout
+        self._max_frame_size = max_frame_size
 
     async def _send_command(
         self,
@@ -197,7 +213,11 @@ class AsyncCommandClient:
         )
 
         try:
-            async with websockets.connect(self._ws_url, open_timeout=cmd_timeout) as ws:
+            async with websockets.connect(
+                self._ws_url,
+                open_timeout=cmd_timeout,
+                max_size=self._max_frame_size,
+            ) as ws:
                 await _perform_handshake(ws, timeout=cmd_timeout)
 
                 # Send the protocol-1 request envelope.
@@ -411,10 +431,23 @@ class CommandClient:
     Args:
         ws_url: Daemon WebSocket URL.
         timeout: Per-command timeout in seconds.
+        max_frame_size: Maximum incoming WebSocket message size in bytes. Should be
+            at least the daemon's ``transport.websocket.max_frame_size`` when that
+            is customized; defaults to 10 MiB to match the daemon default.
     """
 
-    def __init__(self, ws_url: str, *, timeout: float = 30.0) -> None:
-        self._client = AsyncCommandClient(ws_url, timeout=timeout)
+    def __init__(
+        self,
+        ws_url: str,
+        *,
+        timeout: float = 30.0,
+        max_frame_size: int = _DEFAULT_MAX_FRAME_SIZE,
+    ) -> None:
+        self._client = AsyncCommandClient(
+            ws_url,
+            timeout=timeout,
+            max_frame_size=max_frame_size,
+        )
 
     def _run_async(self, coro: Any) -> Any:
         """Run an async coroutine from sync code."""
