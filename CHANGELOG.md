@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.15] - 2026-08-10
+
+### Fixed
+- `AsyncCommandClient` / `CommandClient` now set `max_size=10 MiB` on their short-lived WebSocket RPC connections, matching the daemon's `transport.websocket.max_frame_size` default. Previously they omitted `max_size`, so the `websockets` library fell back to its 1 MiB default and the daemon closed the connection with code 1009 (message too big) on large replies such as `autopilot_list_goals`.
+
 ## [1.0.13] - 2026-08-08
 
 ### Fixed
