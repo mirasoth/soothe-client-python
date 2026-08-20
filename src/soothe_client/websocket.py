@@ -949,6 +949,7 @@ class WebSocketClient:
         response_schema_name: str | None = None,
         response_schema_strict: bool | None = None,
         clarification_mode: str | None = None,
+        interaction_mode: str | None = None,
         clarification_answer: bool = False,
         clarification_answers: list[str] | None = None,
     ) -> None:
@@ -975,6 +976,9 @@ class WebSocketClient:
                 ``resume_clarification``, ``skill:foo``) are forwarded unchanged.
             clarification_mode: clarification relay mode for this turn
                 (``"auto"`` / ``"manual"``). ``None`` lets the daemon fall back
+                to its configured default.
+            interaction_mode: CoreAgent interaction mode for this turn
+                (``"agent"`` / ``"ask"``). ``None`` lets the daemon fall back
                 to its configured default.
             clarification_answer: When True, the daemon treats this input as the
                 answer to the loop's currently pending clarification interrupt and resumes the graph via ``Command(resume=...)``
@@ -1014,6 +1018,8 @@ class WebSocketClient:
             params["response_schema_strict"] = response_schema_strict
         if clarification_mode is not None:
             params["clarification_mode"] = clarification_mode
+        if interaction_mode is not None:
+            params["interaction_mode"] = interaction_mode
         if clarification_answer:
             params["clarification_answer"] = True
         if clarification_answers is not None:
@@ -1256,6 +1262,7 @@ class WebSocketClient:
         *,
         timeout: float = 120.0,
         clarification_mode: str | None = None,
+        interaction_mode: str | None = None,
     ) -> dict[str, Any]:
         """Resolve a skill on the daemon host and receive echo before streaming.
 
@@ -1269,10 +1276,15 @@ class WebSocketClient:
                 configured default. Without this, slash-skill turns ignore
                 the client's Manual badge and always defer to the config
                 default — typically ``"auto"`` (veritas).
+            interaction_mode: CoreAgent interaction mode for the synthetic turn
+                (``"agent"`` / ``"ask"``). ``None`` lets the daemon fall back
+                to its configured default.
         """
         params: dict[str, Any] = {"skill": skill, "args": args}
         if clarification_mode is not None:
             params["clarification_mode"] = clarification_mode
+        if interaction_mode is not None:
+            params["interaction_mode"] = interaction_mode
         return await self.request("invoke_skill", params, timeout=timeout)
 
     async def fetch_daemon_status(

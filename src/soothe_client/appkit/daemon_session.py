@@ -285,6 +285,7 @@ class DaemonSession:
         router_profile: str | None = None,
         attachments: list[dict[str, str]] | None = None,
         clarification_mode: str | None = None,
+        interaction_mode: str | None = None,
         clarification_answer: bool = False,
         clarification_answers: list[str] | None = None,
         intent_hint: str | None = None,
@@ -305,6 +306,7 @@ class DaemonSession:
             router_profile=router_profile,
             attachments=attachments,
             clarification_mode=clarification_mode,
+            interaction_mode=interaction_mode,
             clarification_answer=clarification_answer,
             clarification_answers=clarification_answers,
             intent_hint=intent_hint,
@@ -750,6 +752,7 @@ class DaemonSession:
         args: str = "",
         *,
         clarification_mode: str | None = None,
+        interaction_mode: str | None = None,
     ) -> dict[str, Any]:
         """Invoke a skill on the **stream** socket (required for turn enqueue)."""
         async with self._read_lock:
@@ -758,6 +761,7 @@ class DaemonSession:
                 args,
                 timeout=120.0,
                 clarification_mode=clarification_mode,
+                interaction_mode=interaction_mode,
             )
 
     async def _ensure_rpc_connected(self) -> None:

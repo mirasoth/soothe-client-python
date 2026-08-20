@@ -205,6 +205,7 @@ class LoopInputParams(ParamsBase):
         response_schema_name: Schema name for logging.
         response_schema_strict: Enable strict schema validation.
         clarification_mode: clarification relay mode.
+        interaction_mode: CoreAgent interaction mode (``agent``|``ask``).
         clarification_answer: Mark as answer to pending clarification.
         clarification_answers: Per-question answers for multi-question clarification.
     """
@@ -222,6 +223,7 @@ class LoopInputParams(ParamsBase):
     response_schema_name: str | None = None
     response_schema_strict: bool | None = None
     clarification_mode: str | None = Field(default=None, pattern=r"^(auto|manual)$")
+    interaction_mode: str | None = Field(default=None, pattern=r"^(agent|ask)$")
     clarification_answer: bool = False
     clarification_answers: list[str] | None = None
 
@@ -591,11 +593,13 @@ class InvokeSkillParams(ParamsBase):
         skill: Skill name (required).
         args: Skill arguments.
         clarification_mode: clarification relay mode.
+        interaction_mode: CoreAgent interaction mode (``agent``|``ask``).
     """
 
     skill: str = Field(..., min_length=1)
     args: str = ""
     clarification_mode: str | None = Field(default=None, pattern=r"^(auto|manual)$")
+    interaction_mode: str | None = Field(default=None, pattern=r"^(agent|ask)$")
 
 
 class McpStatusParams(EmptyParams):

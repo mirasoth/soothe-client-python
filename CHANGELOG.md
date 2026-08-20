@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.16] - 2026-08-20
+
+### Added
+- `interaction_mode` parameter on `WebSocketClient.loop_input`, `invoke_skill`, and `DaemonSession` turn/skill helpers — forwards the CoreAgent interaction mode (`"agent"` / `"ask"`) for a turn. `None` lets the daemon fall back to its configured default.
+
 ## [1.0.15] - 2026-08-10
 
 ### Fixed
