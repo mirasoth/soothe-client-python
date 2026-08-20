@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.17] - 2026-08-20
+
+### Changed
+- Require `soothe-sdk>=1.0.9,<2.0.0` to pick up the Langfuse callback-manager flattening fix and the `TraceBody` import-path compatibility shim.
+
 ## [1.0.16] - 2026-08-20
 
 ### Added
