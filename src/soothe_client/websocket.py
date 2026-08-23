@@ -1123,6 +1123,96 @@ class WebSocketClient:
             params["as_node"] = as_node
         return await self.request("loop_state_update", params, timeout=timeout)
 
+    async def loop_tree(
+        self,
+        loop_id: str,
+        *,
+        timeout: float = 15.0,
+    ) -> dict[str, Any]:
+        """Fetch the loop checkpoint tree (``loop_tree``)."""
+        return await self.request(
+            "loop_tree",
+            {"loop_id": loop_id},
+            timeout=timeout,
+        )
+
+    async def loop_prune(
+        self,
+        loop_id: str,
+        *,
+        keep_latest: int = 1,
+        timeout: float = 15.0,
+    ) -> dict[str, Any]:
+        """Prune old checkpoints from a loop (``loop_prune``)."""
+        return await self.request(
+            "loop_prune",
+            {"loop_id": loop_id, "keep_latest": keep_latest},
+            timeout=timeout,
+        )
+
+    async def loop_delete(self, loop_id: str, *, timeout: float = 15.0) -> dict[str, Any]:
+        """Delete a loop and its checkpoints (``loop_delete``)."""
+        return await self.request(
+            "loop_delete",
+            {"loop_id": loop_id},
+            timeout=timeout,
+        )
+
+    async def loop_reattach(self, loop_id: str, *, timeout: float = 15.0) -> dict[str, Any]:
+        """Reattach to an existing loop (``loop_reattach``)."""
+        return await self.request(
+            "loop_reattach",
+            {"loop_id": loop_id},
+            timeout=timeout,
+        )
+
+    async def config_get(
+        self,
+        section: str | None = None,
+        *,
+        timeout: float = 10.0,
+    ) -> dict[str, Any]:
+        """Fetch a daemon config section (``config_get``)."""
+        params: dict[str, Any] = {}
+        if section:
+            params["section"] = section
+        return await self.request("config_get", params, timeout=timeout)
+
+    async def config_reload(self, *, timeout: float = 15.0) -> dict[str, Any]:
+        """Reload daemon config from disk (``config_reload``)."""
+        return await self.request("config_reload", {}, timeout=timeout)
+
+    async def daemon_shutdown(self, *, timeout: float = 10.0) -> dict[str, Any]:
+        """Request a graceful daemon shutdown (``daemon_shutdown``)."""
+        return await self.request("daemon_shutdown", {}, timeout=timeout)
+
+    async def authenticate(
+        self,
+        access_key: str,
+        secret_key: str,
+        *,
+        timeout: float = 15.0,
+    ) -> dict[str, Any]:
+        """Submit credentials for daemon-side auth (``auth``)."""
+        return await self.request(
+            "auth",
+            {"access_key": access_key, "secret_key": secret_key},
+            timeout=timeout,
+        )
+
+    async def refresh_auth_token(
+        self,
+        refresh_token: str,
+        *,
+        timeout: float = 15.0,
+    ) -> dict[str, Any]:
+        """Refresh the daemon-side auth token (``auth_refresh``)."""
+        return await self.request(
+            "auth_refresh",
+            {"refresh_token": refresh_token},
+            timeout=timeout,
+        )
+
     def _reset_disconnect_signal(self) -> None:
         """Clear the mid-session drop signal (called from ``connect``)."""
         self._disconn_event = asyncio.Event()

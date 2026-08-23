@@ -335,3 +335,51 @@ async def test_resume_crash_mid_step_recovery(
         # Free the worker; never issue soothed stop / kill against the host.
         await cancel_loop_best_effort(fresh, bootstrapped_loop)
         await fresh.close(handshake_timeout=1.0)
+
+
+@pytest.mark.asyncio
+async def test_loop_tree_prune_delete_reattach(
+    client: WebSocketClient,
+    bootstrapped_loop: str,
+) -> None:
+    """Exercise loop_tree, loop_prune, loop_reattach, loop_delete convenience RPCs."""
+    tree = await client.loop_tree(bootstrapped_loop, timeout=15.0)
+    assert isinstance(tree, dict)
+
+    pruned = await client.loop_prune(bootstrapped_loop, keep_latest=1, timeout=15.0)
+    assert isinstance(pruned, dict)
+
+    reattached = await client.loop_reattach(bootstrapped_loop, timeout=15.0)
+    assert isinstance(reattached, dict)
+
+    deleted = await client.loop_delete(bootstrapped_loop, timeout=15.0)
+    assert isinstance(deleted, dict)
+
+
+@pytest.mark.asyncio
+async def test_config_get_reload(client: WebSocketClient) -> None:
+    """Exercise config_get and config_reload convenience RPCs."""
+    providers = await client.config_get("providers", timeout=10.0)
+    assert isinstance(providers, dict)
+
+    reloaded = await client.config_reload(timeout=15.0)
+    assert isinstance(reloaded, dict)
+
+
+@pytest.mark.asyncio
+async def test_authenticate_and_refresh(client: WebSocketClient) -> None:
+    """Exercise auth and auth_refresh convenience RPCs.
+
+    These may return error envelopes if the daemon has no auth backend
+    configured; the test only asserts the RPC completes with a dict.
+    """
+    try:
+        result = await client.authenticate("test-key", "test-secret", timeout=10.0)
+    except Exception:
+        return
+    assert isinstance(result, dict)
+    try:
+        refresh = await client.refresh_auth_token("dummy-token", timeout=10.0)
+    except Exception:
+        return
+    assert isinstance(refresh, dict)

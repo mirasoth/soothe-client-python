@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.18] - 2026-08-23
+
+### Added
+- `WebSocketClient` convenience methods for `loop_tree`, `loop_prune`, `loop_delete`, `loop_reattach`, `config_get`, `config_reload`, `daemon_shutdown`, `authenticate`, and `refresh_auth_token` — these previously existed only via `helpers.py` or the generic `request()` call; now they have first-class methods for parity with TypeScript and Rust clients.
+- Integration tests for loop tree/prune/delete/reattach, config get/reload, and auth/refresh flows.
+
 ## [1.0.17] - 2026-08-20
 
 ### Changed
