@@ -764,6 +764,24 @@ class DaemonSession:
                 interaction_mode=interaction_mode,
             )
 
+    async def set_clarification_mode(self, mode: str) -> bool:
+        """Hot-swap the clarification mode on the running goal (RFC-622).
+
+        Sends ``loop_set_clarification_mode`` on the RPC socket. Returns
+        ``True`` when the swap landed on a live goal; ``False`` when no goal
+        is currently running (retry on the next turn).
+        """
+        if not self._loop_id:
+            return False
+        async with self._rpc_lock:
+            await self._ensure_rpc_connected()
+            result = await self._rpc_client.request(
+                "loop_set_clarification_mode",
+                {"loop_id": self._loop_id, "mode": mode},
+                timeout=5.0,
+            )
+        return bool(result.get("applied", False))
+
     async def _ensure_rpc_connected(self) -> None:
         if self._rpc_connected:
             return
