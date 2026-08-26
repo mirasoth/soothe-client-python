@@ -338,17 +338,11 @@ async def test_resume_crash_mid_step_recovery(
 
 
 @pytest.mark.asyncio
-async def test_loop_tree_prune_delete_reattach(
+async def test_loop_delete_reattach(
     client: WebSocketClient,
     bootstrapped_loop: str,
 ) -> None:
-    """Exercise loop_tree, loop_prune, loop_reattach, loop_delete convenience RPCs."""
-    tree = await client.loop_tree(bootstrapped_loop, timeout=15.0)
-    assert isinstance(tree, dict)
-
-    pruned = await client.loop_prune(bootstrapped_loop, keep_latest=1, timeout=15.0)
-    assert isinstance(pruned, dict)
-
+    """Exercise loop_reattach and loop_delete convenience RPCs."""
     reattached = await client.loop_reattach(bootstrapped_loop, timeout=15.0)
     assert isinstance(reattached, dict)
 

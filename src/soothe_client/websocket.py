@@ -1123,33 +1123,6 @@ class WebSocketClient:
             params["as_node"] = as_node
         return await self.request("loop_state_update", params, timeout=timeout)
 
-    async def loop_tree(
-        self,
-        loop_id: str,
-        *,
-        timeout: float = 15.0,
-    ) -> dict[str, Any]:
-        """Fetch the loop checkpoint tree (``loop_tree``)."""
-        return await self.request(
-            "loop_tree",
-            {"loop_id": loop_id},
-            timeout=timeout,
-        )
-
-    async def loop_prune(
-        self,
-        loop_id: str,
-        *,
-        keep_latest: int = 1,
-        timeout: float = 15.0,
-    ) -> dict[str, Any]:
-        """Prune old checkpoints from a loop (``loop_prune``)."""
-        return await self.request(
-            "loop_prune",
-            {"loop_id": loop_id, "keep_latest": keep_latest},
-            timeout=timeout,
-        )
-
     async def loop_delete(self, loop_id: str, *, timeout: float = 15.0) -> dict[str, Any]:
         """Delete a loop and its checkpoints (``loop_delete``)."""
         return await self.request(

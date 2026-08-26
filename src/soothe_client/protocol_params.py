@@ -13,8 +13,6 @@ __all__ = [
     # Loop RPC params
     "LoopGetParams",
     "LoopListParams",
-    "LoopTreeParams",
-    "LoopPruneParams",
     "LoopDeleteParams",
     "LoopNewParams",
     "LoopReattachParams",
@@ -118,28 +116,6 @@ class LoopListParams(ParamsBase):
 
     status: str | None = Field(default=None, description="Filter by loop status")
     limit: int | None = Field(default=None, ge=1, description="Maximum results")
-
-
-class LoopTreeParams(ParamsBase):
-    """Params for ``method=loop_tree``.
-
-    Attributes:
-        loop_id: Loop identifier (required).
-    """
-
-    loop_id: str = Field(..., min_length=1, description="Loop identifier")
-
-
-class LoopPruneParams(ParamsBase):
-    """Params for ``method=loop_prune``.
-
-    Attributes:
-        loop_id: Loop identifier (required).
-        keep_latest: Number of recent branches to keep (default 1).
-    """
-
-    loop_id: str = Field(..., min_length=1)
-    keep_latest: int = Field(default=1, ge=1)
 
 
 class LoopDeleteParams(ParamsBase):

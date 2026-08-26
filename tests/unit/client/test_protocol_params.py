@@ -31,11 +31,9 @@ from soothe_client.protocol_params import (
     LoopListParams,
     LoopMessagesParams,
     LoopNewParams,
-    LoopPruneParams,
     LoopReattachParams,
     LoopStateGetParams,
     LoopStateUpdateParams,
-    LoopTreeParams,
     McpStatusParams,
     ModelsListParams,
     RpcCommandParams,
@@ -337,7 +335,7 @@ class TestLoopIdParams:
 
     @pytest.mark.parametrize(
         "model_cls",
-        [LoopTreeParams, LoopDeleteParams, LoopReattachParams, LoopDetachParams],
+        [LoopDeleteParams, LoopReattachParams, LoopDetachParams],
     )
     def test_requires_loop_id(self, model_cls: type) -> None:
         with pytest.raises(ValidationError):
@@ -345,23 +343,11 @@ class TestLoopIdParams:
 
     @pytest.mark.parametrize(
         "model_cls",
-        [LoopTreeParams, LoopDeleteParams, LoopReattachParams, LoopDetachParams],
+        [LoopDeleteParams, LoopReattachParams, LoopDetachParams],
     )
     def test_valid(self, model_cls: type) -> None:
         params = model_cls(loop_id="abc")
         assert params.loop_id == "abc"
-
-
-class TestLoopPruneParams:
-    """LoopPruneParams validation."""
-
-    def test_valid_defaults(self) -> None:
-        params = LoopPruneParams(loop_id="abc")
-        assert params.keep_latest == 1
-
-    def test_keep_latest_must_be_positive(self) -> None:
-        with pytest.raises(ValidationError):
-            LoopPruneParams(loop_id="abc", keep_latest=0)
 
 
 class TestLoopMessagesParams:
