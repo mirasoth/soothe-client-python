@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.20] - 2026-08-27
+
+### Changed
+- Removed `loop_tree` and `loop_prune` convenience RPCs from `WebSocketClient` and their corresponding parameter classes — the daemon no longer exposes these endpoints, keeping the client API aligned with the daemon surface.
+
 ## [1.0.19] - 2026-08-26
 
 ### Added
