@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.19] - 2026-08-26
+
+### Added
+- `DaemonSession.set_clarification_mode(mode)` — hot-swap the clarification mode on a running goal (RFC-622). Sends `loop_set_clarification_mode` on the RPC socket; returns `True` when the swap landed on a live goal, `False` when no goal is currently running.
+
 ## [1.0.18] - 2026-08-23
 
 ### Added
