@@ -45,7 +45,7 @@ class StaleLoopError(Exception):
         self.cause = cause
 
 
-class ReconnectError(Exception):
+class ReconnectError(ConnectionError):
     """Bounded reconnect attempts exhausted."""
 
     def __init__(self, url: str, attempts: int, cause: BaseException | None = None) -> None:
