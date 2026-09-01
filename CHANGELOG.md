@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.21] - 2026-09-01
+
+### Fixed
+- `ReconnectError` now subclasses `ConnectionError` instead of bare `Exception`, so callers that catch `ConnectionError` (the standard Python pattern for network failures) also catch reconnect exhaustion.
+
 ## [1.0.20] - 2026-08-27
 
 ### Changed
