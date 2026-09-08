@@ -34,7 +34,7 @@ class DaemonError(Exception):
 
 
 class StaleLoopError(Exception):
-    """Loop accepted reattach but failed the ``loop_get`` liveness probe."""
+    """Loop accepted reattach but failed the `loop_get` liveness probe."""
 
     def __init__(self, loop_id: str, cause: BaseException | None = None) -> None:
         detail = f": {cause}" if cause is not None else ""

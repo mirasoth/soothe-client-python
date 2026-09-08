@@ -1,6 +1,6 @@
 """Internal turn / stream boundary helpers.
 
-Used by ``DaemonSession`` and ``WebSocketClient`` for ``turn_id`` / ``seq``
+Used by `DaemonSession` and `WebSocketClient` for `turn_id` / `seq`
 filtering. Not part of the community public API — import only if you are
 extending stream handling.
 """
@@ -11,7 +11,7 @@ from typing import Any
 
 
 def format_turn_id(loop_id: str, generation: int) -> str:
-    """Return wire ``turn_id`` for ``loop_id`` + admit generation."""
+    """Return wire `turn_id` for `loop_id` + admit generation."""
     lid = str(loop_id or "").strip()
     gen = int(generation)
     if not lid or gen <= 0:
@@ -20,7 +20,7 @@ def format_turn_id(loop_id: str, generation: int) -> str:
 
 
 def parse_turn_generation(turn_id: str | None) -> int | None:
-    """Extract generation int from ``turn_id``, or None if malformed."""
+    """Extract generation int from `turn_id`, or None if malformed."""
     raw = str(turn_id or "").strip()
     if not raw or ":" not in raw:
         return None
@@ -33,7 +33,7 @@ def parse_turn_generation(turn_id: str | None) -> int | None:
 
 
 def frame_turn_id(frame: dict[str, Any] | None) -> str | None:
-    """Return ``turn_id`` from a status/event frame or nested custom data."""
+    """Return `turn_id` from a status/event frame or nested custom data."""
     if not isinstance(frame, dict):
         return None
     tid = frame.get("turn_id")
@@ -48,7 +48,7 @@ def frame_turn_id(frame: dict[str, Any] | None) -> str | None:
 
 
 def frame_seq(frame: dict[str, Any] | None) -> int | None:
-    """Return non-negative ``seq`` from a wire frame, or None."""
+    """Return non-negative `seq` from a wire frame, or None."""
     if not isinstance(frame, dict):
         return None
     raw = frame.get("seq")
@@ -64,7 +64,7 @@ def frame_seq(frame: dict[str, Any] | None) -> int | None:
 def turn_ids_match(expected: str | None, candidate: str | None) -> bool:
     """True when both ids are non-empty and equal.
 
-    Absent ids never match — callers must not treat missing ``turn_id`` as
+    Absent ids never match — callers must not treat missing `turn_id` as
     compatible with a bound turn (prior-goal terminals / idle can omit or
     carry a stale generation).
     """
@@ -80,10 +80,10 @@ def is_turn_terminal_allowed(
     query_started: bool,
     turn_progress_seen: bool,
 ) -> bool:
-    """Gate for turn-scoped ``stream.end`` / ``strange_loop.completed``.
+    """Gate for turn-scoped `stream.end` / `strange_loop.completed`.
 
-    Requires an active query, real turn progress, a bound ``expected_turn_id``,
-    and an exact ``frame_turn_id`` match. Absent ids are rejected.
+    Requires an active query, real turn progress, a bound `expected_turn_id`,
+    and an exact `frame_turn_id` match. Absent ids are rejected.
     """
     if not query_started or not turn_progress_seen:
         return False
@@ -98,14 +98,14 @@ def is_status_terminal_allowed(
     turn_progress_seen: bool,
     cancellation_seen: bool = False,
 ) -> bool:
-    """Gate for ``status=idle`` / ``status=stopped`` soft-complete.
+    """Gate for `status=idle` / `status=stopped` soft-complete.
 
-    Requires a bound turn. Matching ``turn_id`` needs progress or cancel.
-    Absent status ``turn_id`` is allowed only when cancellation was already seen
+    Requires a bound turn. Matching `turn_id` needs progress or cancel.
+    Absent status `turn_id` is allowed only when cancellation was already seen
     (legacy cancel finalize); mismatched ids are always rejected.
 
-    ``stopped`` must use the same progress gate as ``idle`` so leftover prior-turn
-    ``stopped`` cannot end a reader that only bound a stale ``status=running``.
+    `stopped` must use the same progress gate as `idle` so leftover prior-turn
+    `stopped` cannot end a reader that only bound a stale `status=running`.
     """
     if not query_started or not str(expected_turn_id or "").strip():
         return False
@@ -126,7 +126,7 @@ def is_idle_terminal_allowed(
     turn_progress_seen: bool,
     cancellation_seen: bool = False,
 ) -> bool:
-    """Gate for ``status=idle`` soft-complete (alias of status terminal rules)."""
+    """Gate for `status=idle` soft-complete (alias of status terminal rules)."""
     return is_status_terminal_allowed(
         expected_turn_id=expected_turn_id,
         frame_turn_id=frame_turn_id,
@@ -142,10 +142,10 @@ def should_bind_running_turn(
     expected_turn_id: str | None,
     last_completed_turn_gen: int = 0,
 ) -> bool:
-    """True when a stamped ``status=running`` may bind/rebind ``expected_turn_id``.
+    """True when a stamped `status=running` may bind/rebind `expected_turn_id`.
 
     Refuses generations at or below the last completed floor (leftover prior-turn
-    ``running`` when ``expected`` is still unset) and older gens than the current
+    `running` when `expected` is still unset) and older gens than the current
     bind.
     """
     if not status_turn:

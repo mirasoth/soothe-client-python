@@ -1,7 +1,7 @@
 """Small WebSocket helpers for CLI and scripts (status, fetch, one-shot RPC).
 
-For interactive turns use ``DaemonSession``. For jobs/cron use
-``AsyncCommandClient`` / ``CommandClient``.
+For interactive turns use `DaemonSession`. For jobs/cron use
+`AsyncCommandClient` / `CommandClient`.
 """
 
 from __future__ import annotations
@@ -25,16 +25,16 @@ def websocket_url_from_config(cfg: Any) -> str:
 
     Accepts any object that provides one of:
 
-    * ``websocket_url()`` callable
-    * ``daemon_host`` / ``daemon_port``
-    * ``transports.websocket.host`` / ``.port``
-    * ``daemon.transports.websocket.host`` / ``.port``
+    * `websocket_url()` callable
+    * `daemon_host` / `daemon_port`
+    * `transports.websocket.host` / `.port`
+    * `daemon.transports.websocket.host` / `.port`
 
     Args:
         cfg: Config-like object.
 
     Returns:
-        WebSocket URL (e.g. ``"ws://127.0.0.1:8765"``).
+        WebSocket URL (e.g. `"ws://127.0.0.1:8765"`).
 
     Raises:
         AttributeError: If none of the supported shapes are present.
@@ -69,12 +69,12 @@ async def _ensure_handshake(client: WebSocketClient, *, timeout: float) -> None:
 
     Args:
         client: Connected WebSocketClient.
-        timeout: Maximum seconds to wait for ``connection_ack``.
+        timeout: Maximum seconds to wait for `connection_ack`.
 
     Raises:
         ConnectionError: If the WebSocket is closed or protocol is incompatible.
         RuntimeError: If the daemon reports a non-ready terminal state.
-        TimeoutError: If ``connection_ack`` does not arrive in time.
+        TimeoutError: If `connection_ack` does not arrive in time.
     """
     if client._handshake_complete:
         return
@@ -88,7 +88,7 @@ async def connected_websocket(
     *,
     timeout: float = 30.0,
 ) -> AsyncIterator[WebSocketClient]:
-    """Connect, handshake, and yield a ready ``WebSocketClient``.
+    """Connect, handshake, and yield a ready `WebSocketClient`.
 
     Args:
         ws_url: Daemon WebSocket URL.
@@ -116,19 +116,18 @@ async def protocol1_rpc(
 ) -> dict[str, Any]:
     """One-shot protocol-1 RPC / notify / subscribe with dict error contract.
 
-    Callers check ``if "error" in response``. Used by Typer commands that do not
-    hold a long-lived session.
+    Callers check `if "error" in response`.
 
     Args:
         ws_url: WebSocket URL.
         method: RPC method, notify target, or subscribe channel.
         params: Structured parameters.
-        mode: ``request``, ``notify``, or ``subscribe``.
-        timeout: Seconds for handshake and the RPC itself.
+        mode: `request`, `notify`, or `subscribe`.
+        timeout: Seconds for handshake and the RPC.
 
     Returns:
-        Result dict, ``{}`` for notify, ``{"subscription_id": ...}`` for
-        subscribe, or ``{"error": "..."}`` on failure.
+        Result dict, `{}` for notify, `{"subscription_id": ...}` for subscribe,
+        or `{"error": "..."}` on failure.
     """
     try:
         async with connected_websocket(ws_url, timeout=timeout) as client:
@@ -165,24 +164,20 @@ async def check_daemon_status(
 ) -> dict:
     """Check daemon status via RPC.
 
-    Performs ``connection_init`` / ``connection_ack`` when needed, then uses
-    ``WebSocketClient.fetch_daemon_status`` so rapid or overlapping polls on the
-    same connection coalesce into one wire request per ``min_interval_s``.
+    Performs handshake when needed, then uses `fetch_daemon_status` so
+    overlapping polls coalesce into one wire request per `min_interval_s`.
 
     Args:
-        client: Connected WebSocketClient
-        timeout: Request timeout in seconds for ``daemon_status`` RPC
-        min_interval_s: Minimum seconds between real ``daemon_status`` RPCs; ``0``
-            always queries the daemon.
-        handshake_timeout: Seconds to wait for ``connection_ack``; defaults to
-            ``timeout``.
+        client: Connected WebSocketClient.
+        timeout: Request timeout for `daemon_status` RPC.
+        min_interval_s: Minimum seconds between real RPCs; `0` always queries.
+        handshake_timeout: Seconds to wait for `connection_ack`; defaults to `timeout`.
 
     Returns:
-        Parsed `daemon_status_response` payload (typically includes `running`,
-        `port_live`, and a numeric count of in-flight client query work).
+        Parsed `daemon_status` payload.
 
     Raises:
-        ConnectionError: If daemon not reachable
+        ConnectionError: If daemon not reachable.
     """
     ack_timeout = handshake_timeout if handshake_timeout is not None else timeout
     await _ensure_handshake(client, timeout=ack_timeout)
@@ -190,18 +185,16 @@ async def check_daemon_status(
 
 
 def _daemon_status_indicates_live(status: dict) -> bool:
-    """Infer liveness from a ``daemon_status`` response payload.
+    """Infer liveness from a `daemon_status` response payload.
 
-    Uses ``readiness_state``: transitional states (``starting``,
-    ``warming``) mean the daemon is not yet ready for loops; terminal states
-    (``error``, ``degraded``, ``stopped``) mean it cannot serve loops; only
-    ``ready`` is live for loop operations.
+    Only `ready` is live for loop operations; transitional (`starting`,
+    `warming`) and terminal (`error`, `degraded`, `stopped`) states are not.
 
     Args:
         status: Daemon status response dict.
 
     Returns:
-        True if daemon is live and ready for loop operations, False otherwise.
+        True if daemon is live and ready, False otherwise.
     """
     readiness_state = status.get("readiness_state")
     if readiness_state in {"starting", "warming"}:
@@ -219,17 +212,14 @@ async def is_daemon_live(
 ) -> bool:
     """Composite health check: connection + status RPC.
 
-    Optionally waits for daemon to reach "ready" state, polling during
-    transitional states like "starting" and "warming".
-
     Args:
-        ws_url: WebSocket URL to check
-        timeout: Per-request timeout for connection + RPC
-        wait_for_ready: If True, poll until daemon is "ready" (not transitional)
-        ready_timeout: Max seconds to wait for ready state when wait_for_ready=True
+        ws_url: WebSocket URL to check.
+        timeout: Per-request timeout for connection + RPC.
+        wait_for_ready: If True, poll until daemon is "ready".
+        ready_timeout: Max seconds to wait for ready state.
 
     Returns:
-        True if daemon is live (and ready if wait_for_ready=True), False otherwise
+        True if daemon is live (and ready if `wait_for_ready`), False otherwise.
     """
     attempts = 3
     delay_s = 0.35
@@ -338,11 +328,11 @@ async def request_daemon_shutdown(client: WebSocketClient, timeout: float = 10.0
     """Request daemon shutdown via RPC.
 
     Args:
-        client: Connected WebSocketClient
-        timeout: Shutdown timeout in seconds
+        client: Connected WebSocketClient.
+        timeout: Shutdown timeout in seconds.
 
     Raises:
-        RuntimeError: If shutdown fails
+        RuntimeError: If shutdown fails.
     """
     try:
         response = await client.request("daemon_shutdown", {}, timeout=timeout)
@@ -358,15 +348,15 @@ async def request_daemon_config_reload(
     """Request daemon config reload via RPC.
 
     Args:
-        client: Connected WebSocketClient
-        timeout: Request timeout in seconds
+        client: Connected WebSocketClient.
+        timeout: Request timeout in seconds.
 
     Returns:
-        Response dict with success status and optional error message
+        Response dict with success status and optional error message.
 
     Raises:
-        ConnectionError: If daemon not reachable
-        RuntimeError: If reload request fails
+        ConnectionError: If daemon not reachable.
+        RuntimeError: If reload request fails.
     """
     await _ensure_handshake(client, timeout=timeout)
     response = await client.request("config_reload", {}, timeout=timeout)
@@ -377,14 +367,14 @@ async def fetch_skills_catalog(client: WebSocketClient, timeout: float = 15.0) -
     """Fetch skills catalog via RPC.
 
     Args:
-        client: Connected WebSocketClient
-        timeout: Request timeout in seconds
+        client: Connected WebSocketClient.
+        timeout: Request timeout in seconds.
 
     Returns:
-        List of skill metadata dicts (wire-safe, no local parsing)
+        List of skill metadata dicts.
 
     Raises:
-        ConnectionError: If daemon not reachable
+        ConnectionError: If daemon not reachable.
     """
     response = await client.request("skills_list", {}, timeout=timeout)
     skills = response.get("skills", [])
@@ -394,19 +384,16 @@ async def fetch_skills_catalog(client: WebSocketClient, timeout: float = 15.0) -
 async def fetch_config_section(client: WebSocketClient, section: str, timeout: float = 5.0) -> dict:
     """Fetch daemon config section via RPC.
 
-    Performs ``connection_init`` / ``connection_ack`` handshake when needed
-    before sending the request.
-
     Args:
-        client: Connected WebSocketClient
-        section: Config section name (e.g., "providers", "defaults")
-        timeout: Request timeout in seconds
+        client: Connected WebSocketClient.
+        section: Config section name (e.g. `providers`, `defaults`).
+        timeout: Request timeout in seconds.
 
     Returns:
-        Wire-safe config section dict
+        Wire-safe config section dict.
 
     Raises:
-        ConnectionError: If daemon not reachable
+        ConnectionError: If daemon not reachable.
     """
     await _ensure_handshake(client, timeout=timeout)
     response = await client.request("config_get", {"section": section}, timeout=timeout)

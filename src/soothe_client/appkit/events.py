@@ -6,23 +6,17 @@ from typing import Any
 
 
 def unwrap_next(event: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Unwrap a protocol-1 ``next`` envelope to its inner streaming frame.
+    """Unwrap a protocol-1 `next` envelope to its inner streaming frame.
 
-    Under protocol-1 the daemon wraps free-form streaming frames
-    (``event`` / ``command_response`` / card replay) in a
-    ``{proto, type:"next", payload:{namespace, mode, data}}`` envelope. This
-    helper returns the inner ``data`` dict (the legacy frame) so turn loops
-    can branch on the same fields as before the migration.
-
-    ``status`` / ``error`` / ``response`` / ``complete`` are sent raw and pass
-    through unchanged.
+    Returns the inner `payload.data` dict for `next` envelopes; other
+    types pass through unchanged.
 
     Args:
-        event: A raw wire frame as returned by ``client.read_event()``.
+        event: A raw wire frame from `client.read_event()`.
 
     Returns:
-        The inner ``payload.data`` dict for ``next`` envelopes, the original
-        frame otherwise, or ``None`` if ``event`` is ``None``.
+        The inner `payload.data` dict for `next`, the original frame
+        otherwise, or `None` if `event` is `None`.
     """
     if not isinstance(event, dict):
         return event
@@ -38,16 +32,15 @@ def unwrap_next(event: dict[str, Any] | None) -> dict[str, Any] | None:
 def is_loop_scoped_event(event: dict[str, Any], *, active_loop_id: str) -> bool:
     """Return whether a daemon frame belongs to the active StrangeLoop session.
 
-    Unwraps protocol-1 ``next`` envelopes first, then checks ``loop_id`` on the
-    inner streaming frame. Non-scoped types (``response``, ``error``,
-    ``complete``, etc.) are always considered in-scope.
+    Unwraps `next` envelopes first, then checks `loop_id`. Non-scoped types
+    (`response`, `error`, `complete`) are always in-scope.
 
     Args:
         event: Raw or already-unwrapped wire frame.
         active_loop_id: Loop id for the in-flight session.
 
     Returns:
-        True when the frame should be processed for ``active_loop_id``.
+        True when the frame should be processed for `active_loop_id`.
     """
     event_type = event.get("type", "")
     if event_type == "next":

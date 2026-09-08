@@ -5,9 +5,6 @@ Public surface::
     from soothe_client import WebSocketClient, is_daemon_live
     from soothe_client import AsyncCommandClient, CommandClient
     from soothe_client.appkit import DaemonSession
-
-Wire request param models: ``soothe_client.protocol_params``.
-Session / multi-user helpers: ``soothe_client.appkit``.
 """
 
 from __future__ import annotations

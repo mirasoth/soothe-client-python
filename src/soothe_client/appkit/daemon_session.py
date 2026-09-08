@@ -1,7 +1,7 @@
 """Dual-socket daemon loop session with turn streaming.
 
 Owns a subscribed stream WebSocket plus an RPC sidecar so metadata calls do not
-starve loop events. ``iter_turn_chunks`` handles idle timeout, post-idle drain,
+starve loop events. `iter_turn_chunks` handles idle timeout, post-idle drain,
 loop scoping, and connection-loss detection.
 """
 
@@ -57,9 +57,6 @@ class DaemonSession:
         async for _ns, mode, data in session.iter_turn_chunks():
             ...
         await session.close()
-
-    Advanced: ``early_drop_fn`` / ``stats_factory`` customize stream filtering
-    and metrics for product UIs; most apps leave the defaults.
     """
 
     def __init__(
@@ -103,12 +100,7 @@ class DaemonSession:
         self._drain_saw_successor_running: bool = False
 
     def _reset_turn_seq_floor(self) -> None:
-        """Clear seq/turn filters when the peer seq namespace may have restarted.
-
-        Keep-TUI reconnect after a daemon restart (or subscribe to a different
-        loop) would otherwise drop all low-seq frames — including
-        ``status=running`` — leaving ``query_started=False`` and a silent TUI.
-        """
+        """Clear seq/turn filters when the peer seq namespace may have restarted."""
         self._last_turn_end_seq = 0
         self._last_completed_turn_gen = 0
         self._expected_turn_id = None
@@ -171,7 +163,7 @@ class DaemonSession:
         """Open the stream socket and bootstrap (or resume) a loop session.
 
         Returns:
-            Status event from the daemon (includes ``loop_id`` on success).
+            Status event from the daemon (includes `loop_id` on success).
         """
         await connect_websocket_with_retries(self._client)
         return await self._bootstrap_loop(resume_loop_id=resume_loop_id)
@@ -201,11 +193,7 @@ class DaemonSession:
         return await self._bootstrap_loop(resume_loop_id=loop_id)
 
     async def ensure_connected(self) -> None:
-        """Reconnect and re-subscribe when the stream WebSocket died.
-
-        Prefers ``reconnect`` + ``reattach_and_probe`` when a loop id is known;
-        falls back to bootstrap on ``StaleLoopError``.
-        """
+        """Reconnect and re-subscribe when the stream WebSocket died."""
         from soothe_client.errors import StaleLoopError
 
         is_disconn = getattr(self._client, "is_disconnected", None)
@@ -266,7 +254,7 @@ class DaemonSession:
         self._rpc_connected = False
 
     async def detach(self) -> None:
-        """Notify the daemon that this client is leaving (``disconnect``)."""
+        """Notify the daemon that this client is leaving (`disconnect`)."""
         if not self._client.is_connected:
             logger.debug("Skipping detach — connection already closed")
             return
@@ -292,8 +280,7 @@ class DaemonSession:
     ) -> None:
         """Send a user message on the active loop (start of a turn).
 
-        Call ``iter_turn_chunks`` afterward to consume the streamed reply.
-        Requires ``connect()`` (or another bootstrap) first.
+        Call `iter_turn_chunks` afterward to consume the streamed reply.
         """
         if not self._loop_id:
             raise RuntimeError("No active loop session")
@@ -313,7 +300,7 @@ class DaemonSession:
         )
 
     async def cancel_remote_query(self) -> None:
-        """Ask the daemon to cancel via slash ``/cancel`` (CLI wire path)."""
+        """Ask the daemon to cancel via slash `/cancel` (CLI wire path)."""
         await self._client.notify("slash_command", {"cmd": "/cancel"})
 
     async def cancel_active_turn(self) -> None:
@@ -325,10 +312,10 @@ class DaemonSession:
         *,
         expected_loop_id: str | None,
     ) -> AsyncIterator[tuple[tuple[Any, ...], str, Any]]:
-        """Yield stream chunks that arrive just after ``idle``.
+        """Yield stream chunks that arrive just after `idle`.
 
-        If a successor ``status=running`` (generation above the completed floor)
-        arrives, re-queue it and set ``_drain_saw_successor_running`` so the
+        If a successor `status=running` (generation above the completed floor)
+        arrives, re-queue it and set `_drain_saw_successor_running` so the
         caller can continue the reader instead of ending the turn.
         """
         self._drain_saw_successor_running = False
@@ -389,7 +376,7 @@ class DaemonSession:
                 continue
 
     async def list_loops(self, *, limit: int = 20) -> dict[str, Any]:
-        """Return ``loop_list`` via the RPC sidecar."""
+        """Return `loop_list` via the RPC sidecar."""
         async with self._rpc_lock:
             await self._ensure_rpc_connected()
             return await self._rpc_client.request("loop_list", {"limit": limit}, timeout=15.0)
@@ -400,22 +387,15 @@ class DaemonSession:
         max_wait_s: float | None = None,
         idle_timeout_s: float | None = None,
     ) -> AsyncIterator[tuple[tuple[Any, ...], str, Any]]:
-        """Yield ``(namespace, mode, data)`` stream chunks until the turn ends.
+        """Yield `(namespace, mode, data)` stream chunks until the turn ends.
 
         Handles idle timeout, post-idle drain, and turn boundary filtering.
-        Call after ``send_turn``.
+        Call after `send_turn`.
 
         Args:
-            max_wait_s: Optional absolute deadline for the whole turn. When set,
-                raises ``TimeoutError`` if the daemon never emits a turn-end
-                signal in time.
-            idle_timeout_s: Optional hard cap on how long to wait for the *first*
-                progress event before giving up. When set and no progress is seen
-                within this many seconds, raises ``TimeoutError`` instead of the
-                default 30s-log-and-reset behavior. Used by attach-only reads
-                (``skip_daemon_send_turn``) so a stale ``live`` probe that turns
-                out to have no real follow-on turn does not spin the thinking
-                row for minutes.
+            max_wait_s: Optional absolute deadline for the whole turn.
+            idle_timeout_s: Optional cap on how long to wait for the first
+                progress event before raising `TimeoutError`.
         """
         self._ensure_turn_floor_attrs()
         self.turn_event_stats = self._new_turn_stats()
@@ -437,7 +417,7 @@ class DaemonSession:
         first_event_logged = False
         progress_seen = False
         # Wall-clock of the last *real* progress (a yielded chunk). A stale
-        # ``status=running`` frame sets ``progress_seen`` but yields nothing;
+        # `status=running` frame sets `progress_seen` but yields nothing;
         # for the attach-only idle timeout we need a signal that advances when
         # the daemon actually streams content, not when it merely re-announces
         # a (possibly stale) running status.
@@ -474,7 +454,7 @@ class DaemonSession:
                             )
                             turn_read_started = time.monotonic()
                     # Attach-only idle timeout: even after a stale
-                    # ``status=running`` sets ``progress_seen``, no real content
+                    # `status=running` sets `progress_seen`, no real content
                     # may ever arrive (the runner already exited). Bound the wait
                     # for the first yielded chunk so the TUI falls back instead
                     # of spinning the thinking row for minutes.
@@ -735,13 +715,13 @@ class DaemonSession:
         return [s for s in skills if isinstance(s, dict)]
 
     async def list_models(self) -> dict[str, Any]:
-        """Return daemon ``models_list`` result."""
+        """Return daemon `models_list` result."""
         async with self._rpc_lock:
             await self._ensure_rpc_connected()
             return await self._rpc_client.list_models(timeout=15.0)
 
     async def get_mcp_status(self) -> dict[str, Any]:
-        """Return daemon ``mcp_status`` result."""
+        """Return daemon `mcp_status` result."""
         async with self._rpc_lock:
             await self._ensure_rpc_connected()
             return await self._rpc_client.get_mcp_status(timeout=15.0)
@@ -764,20 +744,26 @@ class DaemonSession:
                 interaction_mode=interaction_mode,
             )
 
-    async def set_clarification_mode(self, mode: str) -> bool:
-        """Hot-swap the clarification mode on the running goal (RFC-622).
+    async def set_clarification_mode(
+        self,
+        mode: str,
+        *,
+        interaction_mode: str | None = None,
+    ) -> bool:
+        """Hot-swap the agent mode on the running goal.
 
-        Sends ``loop_set_clarification_mode`` on the RPC socket. Returns
-        ``True`` when the swap landed on a live goal; ``False`` when no goal
-        is currently running (retry on the next turn).
+        Returns `True` on a live goal, `False` when none is running.
         """
         if not self._loop_id:
             return False
+        params: dict[str, Any] = {"loop_id": self._loop_id, "mode": mode}
+        if interaction_mode is not None:
+            params["interaction_mode"] = interaction_mode
         async with self._rpc_lock:
             await self._ensure_rpc_connected()
             result = await self._rpc_client.request(
                 "loop_set_clarification_mode",
-                {"loop_id": self._loop_id, "mode": mode},
+                params,
                 timeout=5.0,
             )
         return bool(result.get("applied", False))
@@ -872,10 +858,7 @@ class DaemonSession:
         timeout: float = 10.0,
         as_node: str | None = None,
     ) -> dict[str, Any]:
-        """Merge partial StrangeLoop state via daemon ``loop_state_update``.
-
-        Used by the TUI for interrupt cleanup and token-total persistence.
-        """
+        """Merge partial StrangeLoop state via daemon `loop_state_update`."""
         lid = str(loop_id or "").strip()
         if not lid or not isinstance(values, dict):
             return {}
@@ -896,11 +879,7 @@ class DaemonSession:
     async def fetch_execution_state(self, loop_id: str) -> SimpleNamespace:
         """Fetch execution-progress snapshot (plan, step_index, iteration, status).
 
-        Returns a namespace with ``plan``, ``step_index``, ``iteration``,
-        ``status``, and ``active_runner`` for the loop's bound checkpoint
-        thread. On RPC failure the fields degrade gracefully (``step_index=0``,
-        ``iteration=0``, ``status=None``, ``plan=None``, ``active_runner=False``)
-        so a resume gate can still proceed.
+        Fields degrade gracefully on RPC failure so a resume gate can still proceed.
         """
         lid = str(loop_id or "").strip()
         empty = SimpleNamespace(
@@ -936,7 +915,7 @@ class DaemonSession:
         iteration = iteration_raw if isinstance(iteration_raw, int) else 0
         status_raw = resp.get("status")
         status = status_raw if isinstance(status_raw, str) else None
-        # ``active_runner`` is absent on daemons older than this field; treat
+        # `active_runner` is absent on daemons older than this field; treat
         # absence as unknown (None) so callers can fall back to status only.
         active_runner_raw = resp.get("active_runner")
         active_runner: bool | None
@@ -987,7 +966,7 @@ class DaemonSession:
         return [m for m in raw if isinstance(m, dict)]
 
     async def fetch_goal_completion_text(self, loop_id: str) -> str | None:
-        """Return the latest persisted ``goal_completion`` body for a loop, if any."""
+        """Return the latest persisted `goal_completion` body for a loop, if any."""
         rows = await self.fetch_conversation_log(loop_id, limit=200, include_events=False)
         for row in reversed(rows):
             if row.get("phase") != "goal_completion":

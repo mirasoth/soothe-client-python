@@ -2,7 +2,7 @@
 
 Maps a stream of decoded daemon events into deliverable/streaming/terminal
 outcomes, keyed on (namespace, mode, phase). Product apps pass their own
-``deliverable_phases`` set; appkit stays product-agnostic.
+`deliverable_phases` set; appkit stays product-agnostic.
 """
 
 from __future__ import annotations
@@ -40,18 +40,17 @@ class ChatEventResult:
 
 @dataclass(frozen=True, slots=True)
 class ClassifierConfig:
-    """Product-specific decisions an ``EventClassifier`` needs.
+    """Product-specific decisions an `EventClassifier` needs.
 
     Attributes:
-        deliverable_phases: Message ``phase`` values that may end a query with
+        deliverable_phases: Message `phase` values that may end a query with
             user-facing text. Required.
         min_deliverable_runes: Minimum trimmed rune count for a reply to be
-            persisted as final (avoids finishing on stub ACKs). Defaults to 8.
+            persisted as final. Defaults to 8.
         thinking_step_events: Optional override of the default thinking-step
             event allowlist.
-        treat_status_idle_as_complete: Standalone ``classify`` only. Prefer
-            ``TurnRunner`` + ``TurnBoundary`` for turn end (DaemonSession
-            contract). Default false.
+        treat_status_idle_as_complete: Standalone `classify` only. Prefer
+            `TurnRunner` + `TurnBoundary` for turn end. Default false.
     """
 
     deliverable_phases: frozenset[str] | set[str]
@@ -100,7 +99,7 @@ class EventClassifier:
         return "soothe.output" in event_type and "responded" in event_type
 
     def is_deliverable_loop_phase(self, phase: str) -> bool:
-        """Return whether ``phase`` is in the configured deliverable set."""
+        """Return whether `phase` is in the configured deliverable set."""
         return phase in self._deliverable_phases
 
     def is_substantive_assistant_reply(self, content: str) -> bool:

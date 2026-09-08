@@ -9,7 +9,7 @@ from dataclasses import dataclass
 class TurnEventStats:
     """Event counts accumulated over a single daemon turn.
 
-    Apps may subclass or replace this via ``DaemonSession``'s stats factory.
+    Apps may subclass or replace this via `DaemonSession`'s stats factory.
     """
 
     total: int = 0

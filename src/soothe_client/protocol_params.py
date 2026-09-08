@@ -73,12 +73,7 @@ __all__ = [
 
 
 class ParamsBase(BaseModel):
-    """Base for all client-side param models — allows extra fields for forward compat.
-
-    The protocol envelope carries ``proto``, ``type``, ``method``, and ``id``
-    alongside the operation-specific fields. All models validate against the
-    ``params`` dict so extra keys must be tolerated.
-    """
+    """Base for all client-side param models — allows extra fields for forward compat."""
 
     model_config = {"extra": "allow"}
 
@@ -93,13 +88,7 @@ class EmptyParams(ParamsBase):
 
 
 class LoopGetParams(ParamsBase):
-    """Params for ``method=loop_get``.
-
-    Attributes:
-        loop_id: Loop identifier (required, non-empty).
-        verbose: Include verbose details.
-        tree: Include checkpoint tree.
-    """
+    """Params for `method=loop_get`."""
 
     loop_id: str = Field(..., min_length=1, description="Loop identifier")
     verbose: bool = Field(default=False, description="Include verbose details")
@@ -107,36 +96,20 @@ class LoopGetParams(ParamsBase):
 
 
 class LoopListParams(ParamsBase):
-    """Params for ``method=loop_list``.
-
-    Attributes:
-        status: Optional status filter.
-        limit: Maximum number of results.
-    """
+    """Params for `method=loop_list`."""
 
     status: str | None = Field(default=None, description="Filter by loop status")
     limit: int | None = Field(default=None, ge=1, description="Maximum results")
 
 
 class LoopDeleteParams(ParamsBase):
-    """Params for ``method=loop_delete``.
-
-    Attributes:
-        loop_id: Loop identifier (required).
-    """
+    """Params for `method=loop_delete`."""
 
     loop_id: str = Field(..., min_length=1)
 
 
 class LoopNewParams(ParamsBase):
-    """Params for ``method=loop_new``.
-
-    Attributes:
-        workspace: Optional client workspace path.
-        user_id: Optional user identifier.
-        client_workspace_id: Optional stable workspace scope.
-        is_ephemeral: Create ephemeral loop.
-    """
+    """Params for `method=loop_new`."""
 
     workspace: str | None = None
     user_id: str | None = None
@@ -145,46 +118,19 @@ class LoopNewParams(ParamsBase):
 
 
 class LoopReattachParams(ParamsBase):
-    """Params for ``method=loop_reattach``.
-
-    Attributes:
-        loop_id: Loop to reattach (required).
-    """
+    """Params for `method=loop_reattach`."""
 
     loop_id: str = Field(..., min_length=1)
 
 
 class LoopDetachParams(ParamsBase):
-    """Params for ``method=loop_detach``.
-
-    Attributes:
-        loop_id: Loop to detach from (required).
-    """
+    """Params for `method=loop_detach`."""
 
     loop_id: str = Field(..., min_length=1)
 
 
 class LoopInputParams(ParamsBase):
-    """Params for ``method=loop_input``.
-
-    Attributes:
-        loop_id: Loop identifier (required).
-        content: User input text or structured content (required).
-        preferred_subagent: Routing hint.
-        intake_scope: Forced StrangeLoop scope (``trivial``|``simple``|``complex``).
-        model: Provider:model override.
-        model_params: Additional model parameters.
-        router_profile: Named ``router_profiles`` overlay for chat roles this turn.
-        attachments: Image attachments.
-        intent_hint: Daemon intent_hint (text_completion, image_to_text, ocr, embed).
-        response_schema: Structured output schema.
-        response_schema_name: Schema name for logging.
-        response_schema_strict: Enable strict schema validation.
-        clarification_mode: clarification relay mode.
-        interaction_mode: CoreAgent interaction mode (``agent``|``ask``).
-        clarification_answer: Mark as answer to pending clarification.
-        clarification_answers: Per-question answers for multi-question clarification.
-    """
+    """Params for `method=loop_input`."""
 
     loop_id: str = Field(..., min_length=1)
     content: str | dict[str, Any] = Field(..., description="User input text or structured content")
@@ -205,14 +151,7 @@ class LoopInputParams(ParamsBase):
 
 
 class LoopMessagesParams(ParamsBase):
-    """Params for ``method=loop_messages``.
-
-    Attributes:
-        loop_id: Loop identifier (required).
-        limit: Maximum messages (default 100).
-        offset: Pagination offset.
-        include_events: Include tool events.
-    """
+    """Params for `method=loop_messages`."""
 
     loop_id: str = Field(..., min_length=1)
     limit: int = Field(default=100, ge=1)
@@ -221,25 +160,14 @@ class LoopMessagesParams(ParamsBase):
 
 
 class LoopStateGetParams(ParamsBase):
-    """Params for ``method=loop_state_get``.
-
-    Attributes:
-        loop_id: Loop identifier (required).
-        keys: Specific channel keys to fetch.
-    """
+    """Params for `method=loop_state_get`."""
 
     loop_id: str = Field(..., min_length=1)
     keys: list[str] | None = None
 
 
 class LoopStateUpdateParams(ParamsBase):
-    """Params for ``method=loop_state_update``.
-
-    Attributes:
-        loop_id: Loop identifier (required).
-        values: Channel values to apply (required).
-        as_node: Node to apply update as.
-    """
+    """Params for `method=loop_state_update`."""
 
     loop_id: str = Field(..., min_length=1)
     values: dict[str, Any]
@@ -247,24 +175,13 @@ class LoopStateUpdateParams(ParamsBase):
 
 
 class LoopExecutionStateFetchParams(ParamsBase):
-    """Params for ``method=loop_execution_state_fetch``.
-
-    Returns a focused execution-progress snapshot (plan, step_index,
-    iteration, status) for the loop's bound checkpoint thread.
-
-    Attributes:
-        loop_id: Loop identifier (required).
-    """
+    """Params for `method=loop_execution_state_fetch`."""
 
     loop_id: str = Field(..., min_length=1)
 
 
 class LoopHistoryFetchParams(ParamsBase):
-    """Params for ``method=loop_history_fetch``.
-
-    Attributes:
-        loop_id: Loop identifier (required).
-    """
+    """Params for `method=loop_history_fetch`."""
 
     loop_id: str = Field(..., min_length=1)
 
@@ -275,13 +192,7 @@ class LoopHistoryFetchParams(ParamsBase):
 
 
 class SubscribeParams(ParamsBase):
-    """Params for ``method=loop_events`` subscription.
-
-    Attributes:
-        loop_id: Loop to subscribe to (required).
-        stream_delivery: Delivery mode (batch/adaptive/streaming).
-        wire_tier: Wire filter tier (full/compact).
-    """
+    """Params for `method=loop_events` subscription."""
 
     loop_id: str = Field(..., min_length=1)
     stream_delivery: Literal["batch", "adaptive", "streaming"] = "adaptive"
@@ -289,29 +200,18 @@ class SubscribeParams(ParamsBase):
 
 
 class AutopilotSubscribeParams(ParamsBase):
-    """Params for ``method=autopilot_events`` subscription.
-
-    Attributes:
-        job_id: Optional job filter.
-        filters: Event filter criteria.
-    """
+    """Params for `method=autopilot_events` subscription."""
 
     job_id: str | None = None
     filters: dict[str, Any] | None = None
 
 
 class AutopilotStatusParams(EmptyParams):
-    """Params for ``method=autopilot_status`` — no required fields."""
+    """Params for `method=autopilot_status` — no required fields."""
 
 
 class AutopilotSubmitParams(ParamsBase):
-    """Params for ``method=autopilot_submit``.
-
-    Attributes:
-        description: Task description (required).
-        priority: Task priority (default 50).
-        workspace: Optional workspace path.
-    """
+    """Params for `method=autopilot_submit`."""
 
     description: str = Field(..., min_length=1)
     priority: int = 50
@@ -319,71 +219,51 @@ class AutopilotSubmitParams(ParamsBase):
 
 
 class AutopilotListGoalsParams(EmptyParams):
-    """Params for ``method=autopilot_list_goals`` — no required fields."""
+    """Params for `method=autopilot_list_goals` — no required fields."""
 
 
 class AutopilotGetGoalParams(ParamsBase):
-    """Params for ``method=autopilot_get_goal``.
-
-    Attributes:
-        goal_id: Goal identifier (required).
-    """
+    """Params for `method=autopilot_get_goal`."""
 
     goal_id: str = Field(..., min_length=1)
 
 
 class AutopilotCancelGoalParams(ParamsBase):
-    """Params for ``method=autopilot_cancel_goal``.
-
-    Attributes:
-        goal_id: Goal to cancel (required).
-    """
+    """Params for `method=autopilot_cancel_goal`."""
 
     goal_id: str = Field(..., min_length=1)
 
 
 class AutopilotCancelAllParams(EmptyParams):
-    """Params for ``method=autopilot_cancel_all`` — no required fields."""
+    """Params for `method=autopilot_cancel_all` — no required fields."""
 
 
 class AutopilotWakeParams(EmptyParams):
-    """Params for ``method=autopilot_wake`` — no required fields."""
+    """Params for `method=autopilot_wake` — no required fields."""
 
 
 class AutopilotDreamParams(EmptyParams):
-    """Params for ``method=autopilot_dream`` — no required fields."""
+    """Params for `method=autopilot_dream` — no required fields."""
 
 
 class AutopilotResumeParams(ParamsBase):
-    """Params for ``method=autopilot_resume``.
-
-    Attributes:
-        goal_id: Goal to resume (required).
-    """
+    """Params for `method=autopilot_resume`."""
 
     goal_id: str = Field(..., min_length=1)
 
 
 class AutopilotListJobsParams(EmptyParams):
-    """Params for ``method=autopilot_list_jobs`` — no required fields."""
+    """Params for `method=autopilot_list_jobs` — no required fields."""
 
 
 class AutopilotGetJobParams(ParamsBase):
-    """Params for ``method=autopilot_get_job``.
-
-    Attributes:
-        job_id: Root goal (job) identifier (required).
-    """
+    """Params for `method=autopilot_get_job`."""
 
     job_id: str = Field(..., min_length=1)
 
 
 class AutopilotTopParams(ParamsBase):
-    """Params for ``method=autopilot_top`` (IG-679 / IG-688).
-
-    Attributes:
-        include_terminal: Include terminal goals/jobs when true (default false).
-    """
+    """Params for `method=autopilot_top` (IG-679 / IG-688)."""
 
     include_terminal: bool = False
 
@@ -394,15 +274,7 @@ class AutopilotTopParams(ParamsBase):
 
 
 class JobCreateParams(ParamsBase):
-    """Params for ``method=job_create``.
-
-    Attributes:
-        goal: Root goal description (required).
-        workspace: Optional workspace path.
-        user_id: Optional user identifier.
-        guidance: Initial guidance.
-        intent_hint: Daemon intent_hint (text_completion, image_to_text, ocr, embed).
-    """
+    """Params for `method=job_create`."""
 
     goal: str = Field(..., min_length=1, description="Root goal text")
     workspace: str | None = None
@@ -412,63 +284,37 @@ class JobCreateParams(ParamsBase):
 
 
 class JobStatusParams(ParamsBase):
-    """Params for ``method=job_status``.
-
-    Attributes:
-        job_id: Job identifier (required).
-    """
+    """Params for `method=job_status`."""
 
     job_id: str = Field(..., min_length=1)
 
 
 class JobPauseParams(ParamsBase):
-    """Params for ``method=job_pause``.
-
-    Attributes:
-        job_id: Job to pause (required).
-    """
+    """Params for `method=job_pause`."""
 
     job_id: str = Field(..., min_length=1)
 
 
 class JobResumeParams(ParamsBase):
-    """Params for ``method=job_resume``.
-
-    Attributes:
-        job_id: Job to resume (required).
-    """
+    """Params for `method=job_resume`."""
 
     job_id: str = Field(..., min_length=1)
 
 
 class JobCancelParams(ParamsBase):
-    """Params for ``method=job_cancel``.
-
-    Attributes:
-        job_id: Job to cancel (required).
-    """
+    """Params for `method=job_cancel`."""
 
     job_id: str = Field(..., min_length=1)
 
 
 class JobDagParams(ParamsBase):
-    """Params for ``method=job_dag``.
-
-    Attributes:
-        job_id: Job identifier (required).
-    """
+    """Params for `method=job_dag`."""
 
     job_id: str = Field(..., min_length=1)
 
 
 class JobGuidanceParams(ParamsBase):
-    """Params for ``method=job_guidance``.
-
-    Attributes:
-        job_id: Target job (required).
-        content: Guidance text (canonical, required).
-        goal_id: Optional specific goal target.
-    """
+    """Params for `method=job_guidance`."""
 
     job_id: str = Field(..., min_length=1)
     content: str = Field(..., min_length=1, description="Guidance text (canonical)")
@@ -481,43 +327,26 @@ class JobGuidanceParams(ParamsBase):
 
 
 class CronAddParams(ParamsBase):
-    """Params for ``method=cron_add``.
-
-    Attributes:
-        text: Natural language scheduling request (required).
-        priority: Optional job priority (1-100).
-    """
+    """Params for `method=cron_add`."""
 
     text: str = Field(..., min_length=1, description="Natural language scheduling request")
     priority: int | None = Field(default=None, ge=1, le=100)
 
 
 class CronListParams(ParamsBase):
-    """Params for ``method=cron_list``.
-
-    Attributes:
-        status: Optional status filter.
-    """
+    """Params for `method=cron_list`."""
 
     status: str | None = None
 
 
 class CronShowParams(ParamsBase):
-    """Params for ``method=cron_show``.
-
-    Attributes:
-        job_id: Cron job identifier (required).
-    """
+    """Params for `method=cron_show`."""
 
     job_id: str = Field(..., min_length=1)
 
 
 class CronCancelParams(ParamsBase):
-    """Params for ``method=cron_cancel``.
-
-    Attributes:
-        job_id: Cron job to cancel (required).
-    """
+    """Params for `method=cron_cancel`."""
 
     job_id: str = Field(..., min_length=1)
 
@@ -528,25 +357,21 @@ class CronCancelParams(ParamsBase):
 
 
 class DaemonStatusParams(EmptyParams):
-    """Params for ``method=daemon_status`` — no required fields."""
+    """Params for `method=daemon_status` — no required fields."""
 
 
 class DaemonShutdownParams(EmptyParams):
-    """Params for ``method=daemon_shutdown`` — no required fields."""
+    """Params for `method=daemon_shutdown` — no required fields."""
 
 
 class ConfigGetParams(ParamsBase):
-    """Params for ``method=config_get``.
-
-    Attributes:
-        section: Config section to fetch.
-    """
+    """Params for `method=config_get`."""
 
     section: str | None = None
 
 
 class ConfigReloadParams(EmptyParams):
-    """Params for ``method=config_reload`` — no required fields."""
+    """Params for `method=config_reload` — no required fields."""
 
 
 # ---------------------------------------------------------------------------
@@ -555,22 +380,15 @@ class ConfigReloadParams(EmptyParams):
 
 
 class SkillsListParams(EmptyParams):
-    """Params for ``method=skills_list`` — no required fields."""
+    """Params for `method=skills_list` — no required fields."""
 
 
 class ModelsListParams(EmptyParams):
-    """Params for ``method=models_list`` — no required fields."""
+    """Params for `method=models_list` — no required fields."""
 
 
 class InvokeSkillParams(ParamsBase):
-    """Params for ``method=invoke_skill``.
-
-    Attributes:
-        skill: Skill name (required).
-        args: Skill arguments.
-        clarification_mode: clarification relay mode.
-        interaction_mode: CoreAgent interaction mode (``agent``|``ask``).
-    """
+    """Params for `method=invoke_skill`."""
 
     skill: str = Field(..., min_length=1)
     args: str = ""
@@ -579,7 +397,7 @@ class InvokeSkillParams(ParamsBase):
 
 
 class McpStatusParams(EmptyParams):
-    """Params for ``method=mcp_status`` — no required fields."""
+    """Params for `method=mcp_status` — no required fields."""
 
 
 # ---------------------------------------------------------------------------
@@ -588,23 +406,14 @@ class McpStatusParams(EmptyParams):
 
 
 class AuthParams(ParamsBase):
-    """Params for ``method=auth``.
-
-    Attributes:
-        access_key: Access key credential.
-        secret_key: Secret key credential.
-    """
+    """Params for `method=auth`."""
 
     access_key: str = ""
     secret_key: str = ""
 
 
 class AuthRefreshParams(ParamsBase):
-    """Params for ``method=auth_refresh``.
-
-    Attributes:
-        refresh_token: Token to refresh.
-    """
+    """Params for `method=auth_refresh`."""
 
     refresh_token: str = ""
 
@@ -615,22 +424,13 @@ class AuthRefreshParams(ParamsBase):
 
 
 class SlashCommandParams(ParamsBase):
-    """Params for ``method=slash_command`` notification.
-
-    Attributes:
-        cmd: Slash command string (e.g. ``/exit``, ``/cancel``).
-    """
+    """Params for `method=slash_command` notification."""
 
     cmd: str = Field(..., min_length=1)
 
 
 class RpcCommandParams(ParamsBase):
-    """Params for ``method=rpc_command`` request.
-
-    Attributes:
-        command: RPC command name.
-        payload: Command payload.
-    """
+    """Params for `method=rpc_command` request."""
 
     command: str | None = None
     payload: dict[str, Any] | None = None
@@ -649,11 +449,11 @@ from soothe_sdk.wire.codec import ConnectionInitParams  # noqa: E402,F401
 
 
 class DisconnectParams(EmptyParams):
-    """Params for ``method=disconnect`` notification — no required fields."""
+    """Params for `method=disconnect` notification — no required fields."""
 
 
 class DeliveryAckParams(ParamsBase):
-    """Params for ``method=delivery_ack`` notification (stream termination drain)."""
+    """Params for `method=delivery_ack` notification (stream termination drain)."""
 
     loop_id: str = Field(..., min_length=1)
     seq: int = Field(..., ge=0)

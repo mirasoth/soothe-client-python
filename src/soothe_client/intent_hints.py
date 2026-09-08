@@ -1,4 +1,4 @@
-"""``loop_input.intent_hint`` constants."""
+"""`loop_input.intent_hint` constants."""
 
 from __future__ import annotations
 

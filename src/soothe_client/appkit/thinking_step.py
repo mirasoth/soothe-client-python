@@ -1,7 +1,6 @@
 """Thinking-step extraction for appkit.
 
-Maps an allowlisted progress event to one structured UI line. Free-form
-streams (tokens, reports, reasoning) are excluded. Ported from Go/TS appkit.
+Maps an allowlisted progress event to one structured UI line.
 """
 
 from __future__ import annotations
@@ -40,7 +39,7 @@ def extract_thinking_step(
         allow: Optional override of the default thinking-step allowlist.
 
     Returns:
-        ``(line, True)`` for a recognized event; ``("", False)`` otherwise.
+        `(line, True)` for a recognized event; `("", False)` otherwise.
     """
     if not event_type or data is None:
         return "", False

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.22] - 2026-09-08
+
+### Changed
+- `DaemonSession.set_clarification_mode` accepts an optional `interaction_mode` (`"bypass"` to swap the running goal's CoreAgent graph to the bypass variant; `None` keeps the default graph). The RPC payload omits the field when `None`.
+
 ## [1.0.21] - 2026-09-01
 
 ### Fixed

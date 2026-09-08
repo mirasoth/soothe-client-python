@@ -1,7 +1,7 @@
 """ManagedClient adapter used by ConnectionPool and TurnRunner.
 
-Wraps ``WebSocketClient`` and upgrades flat appkit payloads
-(``loop_input``, ``command_request``, …) to protocol-1 envelopes before send.
+Wraps `WebSocketClient` and upgrades flat appkit payloads to protocol-1
+envelopes before send.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ BootstrapFunc = Callable[
     Awaitable[str],
 ]
 
-# Flat appkit payloads still use legacy ``{"type": "<op>", ...}`` maps (parity
+# Flat appkit payloads still use legacy `{"type": "<op>", ...}` maps (parity
 # with Go InputMessageForLoop). The live daemon accepts protocol-1 envelopes
 # only — coerce at the ManagedClient boundary before send.
 _ALREADY_ENVELOPE_TYPES = frozenset(
@@ -133,7 +133,7 @@ class ManagedClient(Protocol):
 
 
 class WebSocketManagedClient:
-    """Adapter wrapping ``WebSocketClient`` as a ``ManagedClient``."""
+    """Adapter wrapping `WebSocketClient` as a `ManagedClient`."""
 
     def __init__(self, client: WebSocketClient) -> None:
         self._client = client
@@ -189,7 +189,7 @@ class WebSocketManagedClient:
 
 
 def default_client_factory() -> ClientFactory:
-    """Return a factory that builds ``WebSocketManagedClient`` instances."""
+    """Return a factory that builds `WebSocketManagedClient` instances."""
 
     def _factory(url: str) -> ManagedClient:
         return WebSocketManagedClient(WebSocketClient(url=url))
@@ -198,7 +198,7 @@ def default_client_factory() -> ClientFactory:
 
 
 def default_bootstrap_func() -> BootstrapFunc:
-    """Default bootstrap: ``loop_new`` + ``subscribe(loop_events)``."""
+    """Default bootstrap: `loop_new` + `subscribe(loop_events)`."""
 
     async def _bootstrap(client: ManagedClient, workspace_id: str, user_id: str) -> str:
         from soothe_client.session import bootstrap_loop_session

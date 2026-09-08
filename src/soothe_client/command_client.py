@@ -1,6 +1,6 @@
 """Async and sync daemon command clients (jobs, autopilot, cron).
 
-``AsyncCommandClient`` for asyncio; ``CommandClient`` for scripts/CLI.
+`AsyncCommandClient` for asyncio; `CommandClient` for scripts/CLI.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ except Exception:  # pragma: no cover
 
 
 def _normalize_cron_add_result(result: dict[str, Any]) -> dict[str, Any]:
-    """Normalize daemon cron_add payloads to ``{"job": {...}}`` for CLI callers."""
+    """Normalize daemon cron_add payloads to `{"job": {...}}` for CLI callers."""
     if "job" in result:
         out = dict(result)
     elif result.get("job_id") or result.get("id"):
@@ -57,7 +57,7 @@ def _normalize_cron_add_result(result: dict[str, Any]) -> dict[str, Any]:
 
 
 def _normalize_cron_show_result(result: dict[str, Any]) -> dict[str, Any]:
-    """Normalize daemon cron_show payloads to ``{"job": {...}}`` for CLI callers."""
+    """Normalize daemon cron_show payloads to `{"job": {...}}` for CLI callers."""
     if "job" in result:
         return result
     job_id = result.get("job_id") or result.get("id")
@@ -70,11 +70,11 @@ def _normalize_cron_show_result(result: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _perform_handshake(ws: Any, *, timeout: float) -> None:
-    """Complete protocol-1 ``connection_init`` / ``connection_ack``.
+    """Complete protocol-1 `connection_init` / `connection_ack`.
 
     Args:
         ws: Connected WebSocket.
-        timeout: Maximum seconds to wait for a ready ``connection_ack``.
+        timeout: Maximum seconds to wait for a ready `connection_ack`.
 
     Raises:
         RuntimeError: If the handshake fails or times out.
@@ -141,12 +141,7 @@ async def _perform_handshake(ws: Any, *, timeout: float) -> None:
 class AsyncCommandClient:
     """Async client for one-shot daemon RPCs (jobs, autopilot, cron).
 
-    Prefer this for asyncio apps. For scripts/CLI without an event loop, use
-    ``CommandClient``. For streaming agent turns, use ``DaemonSession`` instead.
-
-    Job lifecycle uses ``job_*`` methods. Autopilot goal helpers use
-    ``autopilot_*``. ``job_cancel`` cancels a root job and its descendants;
-    ``autopilot_cancel_all`` cancels every open goal in one call.
+    For streaming agent turns, use `DaemonSession` instead.
 
     Example::
 
@@ -155,11 +150,10 @@ class AsyncCommandClient:
         await client.job_cancel(created["job_id"])
 
     Args:
-        ws_url: Daemon WebSocket URL (e.g. ``ws://127.0.0.1:8765``).
+        ws_url: Daemon WebSocket URL.
         timeout: Per-command timeout in seconds.
-        max_frame_size: Maximum incoming WebSocket message size in bytes. Should be
-            at least the daemon's ``transport.websocket.max_frame_size`` when that
-            is customized; defaults to 10 MiB to match the daemon default.
+        max_frame_size: Max incoming frame size; should match the daemon's
+            `transport.websocket.max_frame_size` when customized.
     """
 
     def __init__(
@@ -182,24 +176,17 @@ class AsyncCommandClient:
     ) -> dict[str, Any]:
         """Send a protocol-1 request envelope and wait for the response.
 
-        Builds a ``WireEnvelope`` with ``type='request'``, ``method=command_type``,
-        ``params=payload``, and a UUID4 correlation ``id`` (, ). The envelope is serialized with:func:`encode_envelope` and the
-        reply is parsed with:func:`decode_envelope`. Responses are matched by
-        ``id``; ``response`` envelopes return their ``result`` and ``error``
-        envelopes raise:class:`RuntimeError` carrying the daemon's code/message.
-
         Args:
-            command_type: RPC method name (e.g. ``"autopilot_status"``).
-            payload: Structured parameters object for the method.
-            timeout: Optional per-call override (seconds). Defaults to the
-                client constructor timeout.
+            command_type: RPC method name.
+            payload: Structured parameters.
+            timeout: Optional per-call override (seconds).
 
         Returns:
-            The ``result`` dict from the matching ``response`` envelope.
+            The `result` dict from the matching `response` envelope.
 
         Raises:
-            RuntimeError: If the daemon replies with an ``error`` envelope, the
-                connection fails, or the command times out.
+            RuntimeError: If the daemon replies with an `error`, the connection
+                fails, or the command times out.
         """
         import websockets
 
@@ -276,10 +263,9 @@ class AsyncCommandClient:
         workspace: str | None = None,
         rail_id: str | None = None,
     ) -> dict[str, Any]:
-        """Submit a new autopilot goal (returns ``goal_id``).
+        """Submit a new autopilot goal (returns `goal_id`).
 
-        Uses a 120s RPC timeout so placement analysis can finish before the
-        client gives up (intake may call the verifier LLM).
+        Uses a 120s timeout to allow placement analysis (may call the verifier LLM).
         """
         payload: dict[str, Any] = {"description": description, "priority": priority}
         if workspace:
@@ -303,8 +289,7 @@ class AsyncCommandClient:
     async def autopilot_cancel_all(self) -> dict[str, Any]:
         """Cancel every open (non-terminal) goal in one call.
 
-        Prefer ``job_cancel(job_id)`` when you know the job root. Use this when
-        you need a bulk stop of leftover pending/active goals.
+        Prefer `job_cancel(job_id)` when you know the job root.
         """
         return await self._send_command("autopilot_cancel_all")
 
@@ -321,15 +306,15 @@ class AsyncCommandClient:
         return await self._send_command("autopilot_resume", {"goal_id": goal_id})
 
     async def autopilot_list_jobs(self) -> dict[str, Any]:
-        """List root goals only (jobs). Prefer ``job_*`` for job control."""
+        """List root goals only (jobs). Prefer `job_*` for job control."""
         return await self._send_command("autopilot_list_jobs")
 
     async def autopilot_get_job(self, job_id: str) -> dict[str, Any]:
-        """Get a root job with DAG snapshot. Prefer ``job_status`` / ``job_dag``."""
+        """Get a root job with DAG snapshot. Prefer `job_status` / `job_dag`."""
         return await self._send_command("autopilot_get_job", {"job_id": job_id})
 
     async def autopilot_top(self, *, include_terminal: bool = False) -> dict[str, Any]:
-        """Jobs → goals → loops snapshot for CLI ``top`` (IG-679 / IG-688).
+        """Jobs → goals → loops snapshot for CLI `top`.
 
         Args:
             include_terminal: When true, include terminal goals and jobs.
@@ -353,7 +338,7 @@ class AsyncCommandClient:
         workspace: str | None = None,
         guidance: str | None = None,
     ) -> dict[str, Any]:
-        """Create a background job (root goal). Returns ``job_id`` + status."""
+        """Create a background job (root goal). Returns `job_id` + status."""
         payload: dict[str, Any] = {"goal": goal}
         if workspace:
             payload["workspace"] = workspace
@@ -401,7 +386,7 @@ class AsyncCommandClient:
         return _normalize_cron_add_result(result)
 
     async def cron_list(self, *, status: str | None = None) -> dict[str, Any]:
-        """List scheduled cron jobs (optional ``status`` filter)."""
+        """List scheduled cron jobs (optional `status` filter)."""
         payload: dict[str, Any] = {}
         if status:
             payload["status"] = status
@@ -424,16 +409,13 @@ class AsyncCommandClient:
 
 
 class CommandClient:
-    """Synchronous wrapper around ``AsyncCommandClient`` for scripts and CLI.
-
-    Each method opens a short-lived WebSocket RPC (same behavior as async).
+    """Synchronous wrapper around `AsyncCommandClient` for scripts and CLI.
 
     Args:
         ws_url: Daemon WebSocket URL.
         timeout: Per-command timeout in seconds.
-        max_frame_size: Maximum incoming WebSocket message size in bytes. Should be
-            at least the daemon's ``transport.websocket.max_frame_size`` when that
-            is customized; defaults to 10 MiB to match the daemon default.
+        max_frame_size: Max incoming frame size; should match the daemon's
+            `transport.websocket.max_frame_size` when customized.
     """
 
     def __init__(
@@ -524,7 +506,7 @@ class CommandClient:
         return cast(dict[str, Any], self._run_async(self._client.autopilot_get_job(job_id)))
 
     def autopilot_top(self, *, include_terminal: bool = False) -> dict[str, Any]:
-        """Jobs → goals → loops snapshot for CLI ``top``."""
+        """Jobs → goals → loops snapshot for CLI `top`."""
         return cast(
             dict[str, Any],
             self._run_async(self._client.autopilot_top(include_terminal=include_terminal)),

@@ -3,7 +3,7 @@
 Manages a pool of daemon connections, one active per session. Reuses an
 active connection when still live, otherwise bootstraps a fresh loop or
 reattaches an existing one. Persistence of session↔loop mappings is
-abstracted behind ``LoopSessionStore``.
+abstracted behind `LoopSessionStore`.
 """
 
 from __future__ import annotations
@@ -35,11 +35,7 @@ class ErrPoolExhausted(Exception):  # noqa: N818 — match Go/TS name
 
 @dataclass(slots=True)
 class PoolConfig:
-    """Configures a ``ConnectionPool``. Zero / negative sizes use defaults.
-
-    ``max_idle_time_s`` is enforced on ``acquire`` (idle sessions are released).
-    ``health_check_interval_s`` is reserved for future background sweeps.
-    """
+    """Configures a `ConnectionPool`. Zero / negative sizes use defaults."""
 
     pool_size: int = 1000
     query_timeout_s: float = 30 * 60
@@ -145,9 +141,9 @@ class ConnectionPool:
         workspace_id: str,
         user_id: str,
     ) -> PooledConn:
-        """Return a live connection for ``session_id``.
+        """Return a live connection for `session_id`.
 
-        Caller must ``release`` when done (turn completes or session reset).
+        Caller must `release` when done (turn completes or session reset).
         """
         async with self._lock:
             existing = self._active.get(session_id)
@@ -209,7 +205,7 @@ class ConnectionPool:
         return conn
 
     async def release(self, session_id: str) -> None:
-        """Tear down the connection for ``session_id`` and return a fresh slot."""
+        """Tear down the connection for `session_id` and return a fresh slot."""
         async with self._lock:
             await self._release_unlocked(session_id)
 

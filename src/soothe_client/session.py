@@ -1,7 +1,7 @@
 """Session bootstrap helpers for CLI, TUI, and appkit.
 
-Prefer ``DaemonSession`` for application code. These helpers are the lower-level
-connect + loop-subscribe steps used when you own the ``WebSocketClient``.
+Prefer `DaemonSession` for application code. These helpers are the lower-level
+connect + loop-subscribe steps used when you own the `WebSocketClient`.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ _SESSION_BOOTSTRAP_TIMEOUT_S = 30.0
 
 
 async def connect_websocket_with_retries(client: Any) -> None:
-    """Connect a ``WebSocketClient`` with retries (daemon cold-start safe)."""
+    """Connect a `WebSocketClient` with retries (daemon cold-start safe)."""
     last_error: OSError | ConnectionError | TimeoutError | None = None
     for attempt in range(_CONNECT_RETRY_COUNT):
         try:
@@ -54,34 +54,30 @@ async def bootstrap_loop_session(
 ) -> dict[str, Any]:
     """Handshake with the daemon, create or attach to a loop, and subscribe for events.
 
-    Uses the protocol-1 wire contract: ``connection_init``/``ack``
-    handshake, then ``request('loop_new')`` or ``request('loop_reattach')`` for
-    resume, then ``subscribe('loop_events')`` for the event stream.
+    Uses the protocol-1 wire contract: `connection_init`/`ack` handshake,
+    then `request('loop_new')` or `request('loop_reattach')` for resume,
+    then `subscribe('loop_events')` for the event stream.
 
     Args:
-        client: ``WebSocketClient`` instance (connected).
-        resume_loop_id: If set, reattach to this existing loop via
-            ``loop_reattach``. Otherwise create a new loop via ``loop_new``.
-        stream_delivery: Daemon stream shaping — one of ``batch`` | ``adaptive`` | ``streaming``.
-        is_ephemeral: When True, loop execution data is GC'd after idle period.
-        workspace: Optional client project directory (e.g. user's CWD). Sent as
-            ``workspace`` on ``loop_new`` and used directly by the runner when set.
-            Ignored on resume when the loop already has workspace metadata.
-        user_id: Optional user id for ``$SOOTHE_HOME/workspaces/<user>/`` layout.
-        client_workspace_id: Optional stable scope when ``workspace`` is omitted.
+        client: `WebSocketClient` instance (connected).
+        resume_loop_id: If set, reattach to this existing loop. Otherwise create a new loop.
+        stream_delivery: Daemon stream shaping (`batch` | `adaptive` | `streaming`).
+        is_ephemeral: When True, loop execution data is GC'd after idle.
+        workspace: Optional client project directory. Sent as `workspace` on
+            `loop_new`; ignored on resume.
+        user_id: Optional user id for `$SOOTHE_HOME/workspaces/<user>/` layout.
+        client_workspace_id: Optional stable scope when `workspace` is omitted.
         daemon_ready_timeout_s: Max seconds for connection_ack handshake.
-        subscribe_timeout_s: Max seconds for ``loop_new`` / ``loop_reattach`` /
-            ``loop_events`` RPCs.
+        subscribe_timeout_s: Max seconds for `loop_new` / `loop_reattach` / `loop_events` RPCs.
 
     Returns:
-        A dict with at least ``loop_id`` on success, or an ``error`` event-shaped dict.
+        A dict with at least `loop_id` on success, or an `error` event-shaped dict.
 
     Raises:
         TimeoutError: If a waited step times out.
         RuntimeError: If daemon reports not-ready during handshake.
         ConnectionError: If the WebSocket is closed and cannot be re-established.
-        ProtocolError: If the daemon returns a protocol-level error for
-            ``loop_new``, ``loop_reattach``, or the ``loop_events`` subscription.
+        ProtocolError: If the daemon returns a protocol-level error.
     """
     alive_check = getattr(client, "is_connection_alive", None)
     if alive_check is not None and not alive_check():
@@ -94,7 +90,7 @@ async def bootstrap_loop_session(
     mapping_data: dict[str, Any] | None = None
 
     if resume_loop_id:
-        # Resume path: reattach to the existing loop via ``loop_reattach`` so the
+        # Resume path: reattach to the existing loop via `loop_reattach` so the
         # daemon replays card history before we subscribe to the live event stream.
         reattach_params: dict[str, Any] = {"loop_id": resume_loop_id}
         try:
@@ -111,8 +107,8 @@ async def bootstrap_loop_session(
             )
         loop_id = resume_loop_id
     else:
-        # New-loop path: ``loop_new`` creates the conversation. Per
-        # the field is ``workspace`` (renamed from ``client_workspace``).
+        # New-loop path: `loop_new` creates the conversation. Per
+        # the field is `workspace` (renamed from `client_workspace`).
         loop_new_params: dict[str, Any] = {}
         if workspace is not None:
             workspace_str = str(workspace).strip()
@@ -124,7 +120,7 @@ async def bootstrap_loop_session(
             loop_new_params["client_workspace_id"] = str(client_workspace_id).strip()
         if is_ephemeral:
             loop_new_params["is_ephemeral"] = True
-        # ``request`` raises ``ProtocolError`` if the daemon returns an error
+        # `request` raises `ProtocolError` if the daemon returns an error
         # envelope (e.g. INVALID_PARAMS, WORKSPACE_RESOLUTION_FAILED). Let it
         # propagate — bootstrap cannot continue without a valid loop_id.
         new_resp = await client.request(
@@ -150,15 +146,15 @@ async def bootstrap_loop_session(
                 client.workspace_mapping = workspace_mapping
 
     #: three first-class modes (batch / adaptive / streaming). Unknown
-    # values fall back to ``adaptive`` (the new bootstrap default).
+    # values fall back to `adaptive` (the new bootstrap default).
     delivery = (
         stream_delivery if stream_delivery in ("batch", "adaptive", "streaming") else "adaptive"
     )
-    # Subscribe to the loop's event stream. Protocol-1 uses ``subscribe`` with
-    # the ``loop_events`` target — the subscription is confirmed implicitly
-    # . If the daemon cannot honour it, an ``error`` with the
-    # subscription ``id`` arrives within the timeout window and ``subscribe``
-    # raises ``ProtocolError``.
+    # Subscribe to the loop's event stream. Protocol-1 uses `subscribe` with
+    # the `loop_events` target — the subscription is confirmed implicitly
+    # . If the daemon cannot honour it, an `error` with the
+    # subscription `id` arrives within the timeout window and `subscribe`
+    # raises `ProtocolError`.
     await client.subscribe(
         "loop_events",
         {

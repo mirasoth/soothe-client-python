@@ -1,7 +1,7 @@
 """Early filters for daemon stream chunks (wire / dict-shaped payloads).
 
 CLI callers that also see LangChain message objects should pass a richer filter
-callback (e.g. ``soothe_cli.runtime.wire.chunk_filter.should_drop_stream_chunk_early``).
+callback (e.g. `soothe_cli.runtime.wire.chunk_filter.should_drop_stream_chunk_early`).
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ _MSG_PAIR_LEN = 2
 
 
 def updates_chunk_is_noop(data: Any) -> bool:
-    """True when an ``updates`` chunk carries no LangGraph interrupt."""
+    """True when an `updates` chunk carries no LangGraph interrupt."""
     if not isinstance(data, dict):
         return True
     return "__interrupt__" not in data
@@ -62,7 +62,7 @@ def _plain_text(msg: dict[str, Any]) -> str:
 
 
 def message_chunk_is_non_actionable(data: Any) -> bool:
-    """True when a wire ``messages`` pair has no tool, text, or loop phase payload."""
+    """True when a wire `messages` pair has no tool, text, or loop phase payload."""
     if not isinstance(data, (list, tuple)) or len(data) != _MSG_PAIR_LEN:
         return False
     msg = data[0]

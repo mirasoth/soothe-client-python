@@ -1,6 +1,6 @@
 """Internal stream/turn terminal frame helpers.
 
-Used by ``WebSocketClient`` and ``DaemonSession`` so leftover prior-turn
+Used by `WebSocketClient` and `DaemonSession` so leftover prior-turn
 terminals cannot blank the next query. Not part of the community public API.
 """
 
@@ -24,7 +24,7 @@ from soothe_sdk.core.events import (
 
 TURN_END_CUSTOM_TYPES = frozenset({STREAM_END, STRANGE_LOOP_COMPLETED})
 
-# ``soothe.stream.end`` reasons that mean the turn was cancelled (not a clean end).
+# `soothe.stream.end` reasons that mean the turn was cancelled (not a clean end).
 STREAM_END_CANCEL_REASONS = frozenset(
     {
         "cancelled",
@@ -62,7 +62,7 @@ STALE_TURN_PENDING_TYPES = frozenset(
 
 
 def is_turn_end_custom_data(data: Any) -> TypeGuard[dict[str, Any]]:
-    """True when ``data`` is a turn-scoped terminal custom payload."""
+    """True when `data` is a turn-scoped terminal custom payload."""
     if not isinstance(data, dict):
         return False
     custom_type = str(data.get("type", "")).strip()
@@ -75,14 +75,14 @@ def is_turn_end_custom_data(data: Any) -> TypeGuard[dict[str, Any]]:
 
 
 def is_stream_end_cancel_reason(reason: str | None) -> bool:
-    """True when a ``stream.end`` reason is a cancel/disconnect (not clean end)."""
+    """True when a `stream.end` reason is a cancel/disconnect (not clean end)."""
     return str(reason or "").strip().lower() in STREAM_END_CANCEL_REASONS
 
 
 def is_turn_progress_chunk(mode: str, data: Any) -> bool:
     """True when a chunk proves the active turn has non-intake progress.
 
-    Used so late prior-goal ``stream.end`` cannot close a turn that has only
+    Used so late prior-goal `stream.end` cannot close a turn that has only
     seen intake lifecycle (e.g. plan.phase "Interpreting goal").
     """
     if mode in {"messages", "updates"}:
@@ -100,13 +100,13 @@ def is_turn_progress_chunk(mode: str, data: Any) -> bool:
 
 
 def stale_pending_frame_label(event: dict[str, Any]) -> str | None:
-    """Return a peel label when ``event`` is safe to drop at turn start."""
+    """Return a peel label when `event` is safe to drop at turn start."""
     event_type = str(event.get("type") or "")
     if event_type in STALE_TURN_PENDING_TYPES:
         return event_type
 
     # Leftover terminal status from the prior turn must not bind/kill the next
-    # reader. Keep ``status=running`` — attach / live-query paths need it.
+    # reader. Keep `status=running` — attach / live-query paths need it.
     if event_type == "status":
         state = str(event.get("state") or "").strip().lower()
         if state in {"idle", "stopped"}:

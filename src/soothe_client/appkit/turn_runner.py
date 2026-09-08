@@ -3,8 +3,8 @@
 Executes one query turn end-to-end: acquire a pooled connection, enforce
 single-flight, send loop_input, consume the event stream, persist/broadcast.
 
-Turn end is owned by ``TurnBoundary`` (DaemonSession.iter_turn_chunks contract:
-gated ``stream.end`` / idle / stopped). ``EventClassifier`` selects user-visible
+Turn end is owned by `TurnBoundary` (DaemonSession.iter_turn_chunks contract:
+gated `stream.end` / idle / stopped). `EventClassifier` selects user-visible
 text and may early-complete on deliverable phases for UX.
 """
 
@@ -63,7 +63,7 @@ STREAM_CLOSE_SOFT_COMPLETE = TimeoutPolicy.SOFT_COMPLETE
 
 @dataclass(slots=True)
 class TurnConfig:
-    """Configures a ``TurnRunner``."""
+    """Configures a `TurnRunner`."""
 
     query_timeout_s: float = 30 * 60
     idle_timeout_s: float = 0.0
@@ -77,7 +77,7 @@ class TurnConfig:
 
 @dataclass(slots=True)
 class InputOpts:
-    """Optional daemon hints on a ``loop_input`` payload."""
+    """Optional daemon hints on a `loop_input` payload."""
 
     intent_hint: str | None = None
     preferred_subagent: str | None = None
@@ -93,7 +93,7 @@ def input_message_for_loop(
     attachments: list[Attachment] | None = None,
     opts: InputOpts | None = None,
 ) -> dict[str, Any]:
-    """Build a ``loop_input`` payload with optional attachments and hints."""
+    """Build a `loop_input` payload with optional attachments and hints."""
     msg: dict[str, Any] = {"type": "loop_input", "content": text}
     if loop_id:
         msg["loop_id"] = loop_id

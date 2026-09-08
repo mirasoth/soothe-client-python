@@ -1,12 +1,7 @@
 """Decouple daemon stream ingestion from chunk processing and UI application.
 
-Three stages run concurrently during a turn:
-
-1. **Reader** (async): pulls chunks from the daemon and enqueues them.
-2. **Processor** (dedicated thread): runs CPU-heavy parsing without blocking the UI.
-3. **Applier** (async): consumes prepared plans and performs product-specific updates.
-
-High-priority chunks (tool wire, loop step events) are applied before low-priority text.
+Three stages run concurrently during a turn: Reader (async, pulls chunks),
+Processor (dedicated thread, CPU-heavy parsing), Applier (async, product updates).
 """
 
 from __future__ import annotations
@@ -39,7 +34,7 @@ _DEFAULT_OUTBOUND_MAXSIZE = 1024
 
 
 class SupportsTurnLatency(Protocol):
-    """Minimal latency recorder used by ``run_turn_pipeline``."""
+    """Minimal latency recorder used by `run_turn_pipeline`."""
 
     turn_start_monotonic: float
 

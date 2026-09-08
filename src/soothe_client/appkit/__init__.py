@@ -1,16 +1,8 @@
 """Application helpers built on WebSocketClient.
 
-Primary building blocks for agent UIs and backends:
-
-- ``DaemonSession`` — dual-socket loop session + streamed turns
-- ``ConnectionPool`` / ``TurnRunner`` — multi-session turn execution
-- ``QueryGate`` — one-in-flight query per session
-- ``EventClassifier`` — stream → deliverable mapping
-- ``SSEBroadcaster`` — drop-on-full fan-out to subscribers
-- ``LoopSessionStore`` — persistence seam (Protocol)
-
-Advanced stream/pipeline plumbing lives in submodules
-(``events``, ``chunk_filter``, ``turn``, ``managed_client``).
+Building blocks for agent UIs and backends: `DaemonSession`,
+`ConnectionPool` / `TurnRunner`, `QueryGate`, `EventClassifier`,
+`SSEBroadcaster`, `LoopSessionStore`.
 """
 
 from __future__ import annotations

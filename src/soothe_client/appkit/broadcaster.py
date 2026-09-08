@@ -19,7 +19,7 @@ SUBSCRIBER_QUEUE_CAP = 100
 
 @dataclass(frozen=True, slots=True)
 class SSEEvent:
-    """One Server-Sent Event payload. The ``type`` vocabulary is app-defined."""
+    """One Server-Sent Event payload. The `type` vocabulary is app-defined."""
 
     type: str
     data: Any = None
@@ -40,9 +40,9 @@ class SSEBroadcaster:
         self._subscribers: dict[str, dict[str, _Subscriber]] = {}
 
     def subscribe(self, session_id: str) -> tuple[AsyncIterator[SSEEvent], str]:
-        """Register a subscriber and return ``(async iterator, subscription id)``.
+        """Register a subscriber and return `(async iterator, subscription id)`.
 
-        Unsubscribe via ``unsubscribe`` or ``close``.
+        Unsubscribe via `unsubscribe` or `close`.
         """
         sub_id = str(uuid4())
         sub = _Subscriber()

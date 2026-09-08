@@ -35,7 +35,7 @@ class QueryGate:
         cancel: Callable[[], None],
         send_cancel: SendCancelFn | None = None,
     ) -> None:
-        """Reserve ``session_id`` for one agent turn.
+        """Reserve `session_id` for one agent turn.
 
         Args:
             session_id: Application session key (often the loop id).
@@ -43,7 +43,7 @@ class QueryGate:
             send_cancel: Optional async daemon-cancel sender.
 
         Raises:
-            ErrQueryBusy: A query is already in flight for ``session_id``.
+            ErrQueryBusy: A query is already in flight for `session_id`.
         """
         async with self._lock:
             if session_id in self._cancels:
@@ -80,7 +80,7 @@ class QueryGate:
             self._send_cancels.pop(session_id, None)
 
     async def is_active(self, session_id: str) -> bool:
-        """Return whether a query is in flight for ``session_id``."""
+        """Return whether a query is in flight for `session_id`."""
         async with self._lock:
             return session_id in self._cancels
 

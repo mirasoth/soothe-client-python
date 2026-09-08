@@ -1,6 +1,6 @@
 """DaemonSession turn-end contract for the pool TurnRunner path.
 
-TurnRunner owns one ``TurnBoundary`` per Execute. EventClassifier may
+TurnRunner owns one `TurnBoundary` per Execute. EventClassifier may
 early-complete on deliverable phases for UX; it is not the sole terminator.
 """
 

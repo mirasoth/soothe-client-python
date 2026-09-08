@@ -1,4 +1,4 @@
-"""In-memory apply helpers for daemon ``soothe.card.*`` frames."""
+"""In-memory apply helpers for daemon `soothe.card.*` frames."""
 
 from __future__ import annotations
 

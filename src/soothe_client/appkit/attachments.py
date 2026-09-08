@@ -1,6 +1,6 @@
 """Image attachment compaction for appkit.
 
-Downscales ``image/*`` payloads when either dimension exceeds a max size.
+Downscales `image/*` payloads when either dimension exceeds a max size.
 Non-images and decode failures pass through unchanged.
 """
 
@@ -16,7 +16,7 @@ from PIL import Image
 
 @dataclass(slots=True)
 class CompactImageOptions:
-    """Controls ``compact_image_attachment``. Zero / unset fields use defaults."""
+    """Controls `compact_image_attachment`. Zero / unset fields use defaults."""
 
     max_dim: int = 768
     jpeg_quality: int = 85
@@ -38,15 +38,15 @@ def compact_image_attachment(
     data_b64: str,
     opts: CompactImageOptions | None = None,
 ) -> tuple[str, str]:
-    """Downscale an image attachment when either dimension exceeds ``max_dim``.
+    """Downscale an image attachment when either dimension exceeds `max_dim`.
 
     Args:
-        mime_type: Attachment MIME type (e.g. ``image/png``).
+        mime_type: Attachment MIME type (e.g. `image/png`).
         data_b64: Base64-encoded image bytes.
         opts: Optional size / JPEG quality overrides.
 
     Returns:
-        ``(out_mime, out_b64)``. Non-images and failures return inputs unchanged.
+        `(out_mime, out_b64)`. Non-images and failures return inputs unchanged.
     """
     if not data_b64 or not mime_type.startswith("image/"):
         return mime_type, data_b64
@@ -92,7 +92,7 @@ def compact_attachments(
     atts: list[dict[str, Any]] | None,
     opts: CompactImageOptions | None = None,
 ) -> list[dict[str, Any]]:
-    """Apply ``compact_image_attachment`` to each ``mime_type`` + ``data`` map."""
+    """Apply `compact_image_attachment` to each `mime_type` + `data` map."""
     if not atts:
         return atts or []
     out: list[dict[str, Any]] = []

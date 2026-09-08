@@ -67,7 +67,7 @@ class LoopSessionStore(Protocol):
     """Persistence seam between appkit and the application's storage backend."""
 
     async def get_session(self, session_id: str) -> LoopSessionEntry | None:
-        """Return the persisted entry for ``session_id``, or None."""
+        """Return the persisted entry for `session_id`, or None."""
         ...
 
     async def create_session(
@@ -89,7 +89,7 @@ class LoopSessionStore(Protocol):
         ...
 
     async def get_loop_id_for_session(self, session_id: str) -> tuple[str, bool]:
-        """Return ``(loop_id, ok)``; ``ok is False`` triggers fresh ``loop_new``."""
+        """Return `(loop_id, ok)`; `ok is False` triggers fresh `loop_new`."""
         ...
 
     async def append_message(self, session_id: str, message: SessionMessage) -> None:

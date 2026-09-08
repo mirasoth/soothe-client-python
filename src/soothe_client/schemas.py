@@ -31,10 +31,7 @@ class Plan(BaseModel):
 
 
 class ToolOutput(BaseModel):
-    """Wire-safe tool output schema for WebSocket protocol.
-
-    Used to structure tool results for rendering in CLI.
-    """
+    """Wire-safe tool output schema for WebSocket protocol."""
 
     tool_name: str = Field(description="Name of the tool that produced output")
     output: str = Field(description="Tool output content")
