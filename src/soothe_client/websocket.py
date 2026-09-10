@@ -883,6 +883,7 @@ class WebSocketClient:
         interaction_mode: str | None = None,
         clarification_answer: bool = False,
         clarification_answers: list[str] | None = None,
+        autopilot_rail_id: str | None = None,
     ) -> None:
         """Send user input to a subscribed loop (`loop_input`).
 
@@ -904,6 +905,9 @@ class WebSocketClient:
             interaction_mode: CoreAgent mode (`agent` / `ask`). None = daemon default.
             clarification_answer: Treat input as answer to pending clarification.
             clarification_answers: Per-question answers for multi-question clarifications.
+            autopilot_rail_id: Optional builtin rail id. When set, the daemon
+                binds a ``LoopRailInterpreter`` for this goal via
+                ``run_with_progress(autopilot_rail_id=…)``.
         """
         params: dict[str, Any] = {
             "loop_id": loop_id,
@@ -937,6 +941,8 @@ class WebSocketClient:
             params["clarification_answer"] = True
         if clarification_answers is not None:
             params["clarification_answers"] = list(clarification_answers)
+        if autopilot_rail_id:
+            params["autopilot_rail_id"] = autopilot_rail_id
         await self.notify("loop_input", params)
 
     async def loop_list(

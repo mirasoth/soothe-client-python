@@ -277,6 +277,7 @@ class DaemonSession:
         clarification_answer: bool = False,
         clarification_answers: list[str] | None = None,
         intent_hint: str | None = None,
+        autopilot_rail_id: str | None = None,
     ) -> None:
         """Send a user message on the active loop (start of a turn).
 
@@ -297,6 +298,7 @@ class DaemonSession:
             clarification_answer=clarification_answer,
             clarification_answers=clarification_answers,
             intent_hint=intent_hint,
+            autopilot_rail_id=autopilot_rail_id,
         )
 
     async def cancel_remote_query(self) -> None:
