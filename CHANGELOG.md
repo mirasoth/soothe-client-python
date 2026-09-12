@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.23] - 2026-09-13
+
+### Added
+- `autopilot_rail_id` parameter on `DaemonSession.send_turn` and `WebSocketClient.send_input` — when set, the daemon binds a `LoopRailInterpreter` for this goal via `run_with_progress(autopilot_rail_id=…)`. Wire param `autopilot_rail_id` is emitted on `loop_input` when truthy.
+
 ## [1.0.22] - 2026-09-08
 
 ### Changed
