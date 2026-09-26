@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.24] - 2026-09-27
+
+### Fixed
+- `LoopInputParams.interaction_mode` and `InvokeSkillParams.interaction_mode` patterns now accept `plan` and `bypass` in addition to `agent` and `ask`, matching the daemon's accepted CoreAgent interaction modes.
+
 ## [1.0.23] - 2026-09-13
 
 ### Added

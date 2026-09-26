@@ -145,7 +145,7 @@ class LoopInputParams(ParamsBase):
     response_schema_name: str | None = None
     response_schema_strict: bool | None = None
     clarification_mode: str | None = Field(default=None, pattern=r"^(auto|manual)$")
-    interaction_mode: str | None = Field(default=None, pattern=r"^(agent|ask)$")
+    interaction_mode: str | None = Field(default=None, pattern=r"^(agent|ask|plan|bypass)$")
     clarification_answer: bool = False
     clarification_answers: list[str] | None = None
 
@@ -393,7 +393,7 @@ class InvokeSkillParams(ParamsBase):
     skill: str = Field(..., min_length=1)
     args: str = ""
     clarification_mode: str | None = Field(default=None, pattern=r"^(auto|manual)$")
-    interaction_mode: str | None = Field(default=None, pattern=r"^(agent|ask)$")
+    interaction_mode: str | None = Field(default=None, pattern=r"^(agent|ask|plan|bypass)$")
 
 
 class McpStatusParams(EmptyParams):
