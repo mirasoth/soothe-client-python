@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-13
+
 ### Added
 - Absorb the client-side shared contracts formerly provided by the `soothe-sdk` dependency (the SDK is being dissolved; `soothe-client-python` is the canonical home for the client-side copies, mirroring how the Go and Rust clients already ship their own codec):
   - `soothe_client.wire` — Protocol-1 codec (`WireEnvelope`, `ConnectionInit*`, `Batch*`, `ProtocolError`, encode/decode helpers) and `wire.protocol` (`decode_websocket_text` / `encode_websocket_text` / `WorkspaceMapping` / `preview_first`).
@@ -19,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Drop the `soothe-sdk` dependency; `langchain-core` is now a direct dependency (wire codec message serde). Internal imports switch from `soothe_sdk.*` to `soothe_client.*` one-to-one; the client version in the `connection_init` handshake is now read from this package instead of the SDK.
+
+[Compare with previous version]: https://github.com/mirasoth/soothe-client-python/compare/v1.0.24...v1.1.0
 
 ## [1.0.24] - 2026-09-27
 
