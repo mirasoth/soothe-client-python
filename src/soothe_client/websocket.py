@@ -1320,7 +1320,7 @@ class WebSocketClient:
         envelope = ConnectionInitEnvelope(
             params=ConnectionInitParams(
                 client_version=client_version,
-                client_name="soothe-sdk",
+                client_name="soothe-client-python",
                 accept_proto=["1"],
                 capabilities=["streaming", "batch", "heartbeat"],
             )

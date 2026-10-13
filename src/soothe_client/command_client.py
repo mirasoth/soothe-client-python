@@ -83,7 +83,7 @@ async def _perform_handshake(ws: Any, *, timeout: float) -> None:
     init = ConnectionInitEnvelope(
         params=ConnectionInitParams(
             client_version=_client_version,
-            client_name="soothe-sdk",
+            client_name="soothe-client-python",
             accept_proto=["1"],
             capabilities=["streaming", "batch", "heartbeat"],
         )
