@@ -1,36 +1,23 @@
-"""Display-layer SDK package.
+"""Client-side display-layer contract parsing.
 
-This package hosts:
+This package hosts the wire-protocol parse side shared by the transport,
+appkit, and any Python front end:
 
 * ``transcript_types`` — ``MessageData`` / ``MessageType`` / ``ToolStatus``
-  dataclasses shared between TUI rendering and the host-resident
-  ``CardBinder``.
-* ``card_binder`` — pure event → ``MessageData`` binding logic, callable
-  from either the TUI or the host.
+  dataclasses travelling on the wire.
 * ``card_ledger`` — pure-Python ``CardMutation`` + ``InMemoryCardLedger``
-  primitives backing the display card store and the ``soothe.card.*`` wire schema.
+  primitives backing the ``soothe.card.*`` wire schema.
 * ``card_wire`` — parse/apply helpers for live ``soothe.card.*`` frames.
-* Tool-display helpers (``text_extract``, ``message_processing``,
-  ``tool_message_format``, ``tool_result``) that the binder depends on,
-  kept here so the binder has no client-side dependencies.
+* ``snapshot_types`` — goal display snapshot wire payload types.
+* ``message_processing`` / ``tool_result`` / ``tool_message_format`` —
+  stream-to-text parse helpers.
+
+(TUI-owned ``card_binder`` / ``text_extract`` / ``snapshot_collapser`` moved
+to `soothe_cli.display` / the host `soothe.display` in 1.2.0.)
 """
 
 from __future__ import annotations
 
-from soothe_client.display.card_binder import (
-    collect_cognition_card_replay,
-    conversation_rows_to_langchain_messages,
-    convert_combined_to_data,
-    convert_event_to_message_data,
-    convert_loop_events_to_data,
-    convert_messages_to_data,
-    is_loop_internal_checkpoint_message,
-    merge_history_sources,
-    merge_step_progress,
-    merge_visible_messages_with_cognition_cards,
-    parse_loop_event_timestamp,
-    sanitize_resume_display_cards,
-)
 from soothe_client.display.card_ledger import (
     CARD_SCHEMA_VERSION,
     CardMutation,
@@ -48,21 +35,10 @@ from soothe_client.display.card_wire import (
     CardProjection,
     parse_card_custom_payload,
 )
-from soothe_client.display.snapshot_collapser import (
-    build_goal_snapshot,
-    fold_display_cards,
-    split_cards_by_user_segments,
-)
 from soothe_client.display.snapshot_types import (
     GOAL_DISPLAY_SNAPSHOT_SCHEMA_VERSION,
     GoalDisplaySnapshot,
     snapshot_from_dataclass_dict,
-)
-from soothe_client.display.text_extract import (
-    extract_ai_text_for_display,
-    extract_text_from_ai_message,
-    extract_user_text_for_display,
-    normalize_stream_message,
 )
 from soothe_client.display.transcript_types import (
     UPDATABLE_FIELDS,
@@ -77,24 +53,6 @@ __all__ = [
     "MessageType",
     "ToolStatus",
     "UPDATABLE_FIELDS",
-    # Text extract
-    "extract_ai_text_for_display",
-    "extract_text_from_ai_message",
-    "extract_user_text_for_display",
-    "normalize_stream_message",
-    # Binder
-    "collect_cognition_card_replay",
-    "convert_combined_to_data",
-    "convert_event_to_message_data",
-    "convert_loop_events_to_data",
-    "convert_messages_to_data",
-    "conversation_rows_to_langchain_messages",
-    "is_loop_internal_checkpoint_message",
-    "merge_history_sources",
-    "merge_step_progress",
-    "merge_visible_messages_with_cognition_cards",
-    "parse_loop_event_timestamp",
-    "sanitize_resume_display_cards",
     # Ledger
     "CARD_SCHEMA_VERSION",
     "CardMutation",
@@ -113,8 +71,5 @@ __all__ = [
     # Goal display snapshots
     "GOAL_DISPLAY_SNAPSHOT_SCHEMA_VERSION",
     "GoalDisplaySnapshot",
-    "build_goal_snapshot",
-    "fold_display_cards",
     "snapshot_from_dataclass_dict",
-    "split_cards_by_user_segments",
 ]

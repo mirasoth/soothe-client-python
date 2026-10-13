@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-13
+
+### Changed
+- **Slim the display/ux surface to transport + wire-parse concerns** (placement review follow-up):
+  - Removed `display.card_binder` (30 KB TUI transcript binder) and `display.text_extract` — the only consumer is the soothe TUI; both now live in `soothe_cli.display` (soothe-cli ships them itself and declares `langchain-core` directly).
+  - Removed `ux.subagent_progress` / `ux.subagent_wire_display` — pure TUI rendering helpers, moved to `soothe_cli.ux`.
+  - Removed `display.snapshot_collapser` — server-side goal-snapshot folding logic with no client-side consumer (the host copy in `soothe.display` is canonical).
+  - `display.__init__` / `ux.__init__` barrels re-export only the retained wire-parse helpers; imports map: `from soothe_client.display.card_binder import X` → `from soothe_cli.display.card_binder import X`, `from soothe_client.ux.subagent_wire_display import X` → `from soothe_cli.ux.subagent_wire_display import X`.
+- Kept (wire-protocol parse side, shared by transport + appkit): `card_wire`, `card_ledger`, `transcript_types`, `snapshot_types`, `message_processing`, `tool_result`, `tool_message_format`, `ux.classification`, `ux.loop_stream`, `ux.task_namespace`, `ux.execute_namespace`, `ux.stream_tool_wire`.
+
+[Compare with previous version]: https://github.com/mirasoth/soothe-client-python/compare/v1.1.0...v1.2.0
+
 ## [1.1.0] - 2026-10-13
 
 ### Added
