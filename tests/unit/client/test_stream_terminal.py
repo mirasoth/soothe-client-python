@@ -1,8 +1,7 @@
 """Unit tests for shared stream/turn terminal helpers."""
 
-from soothe_sdk.core.events import CARD_CREATED, CARD_FINALIZED, CARD_UPDATED
-
 from soothe_client.appkit import CardProjection
+from soothe_client.core.events import CARD_CREATED, CARD_FINALIZED, CARD_UPDATED
 from soothe_client.stream_terminal import (
     STRANGE_LOOP_COMPLETED,
     STREAM_END,

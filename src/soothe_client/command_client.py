@@ -10,7 +10,8 @@ import logging
 from typing import Any, cast
 from uuid import uuid4
 
-from soothe_sdk.wire.codec import (
+from soothe_client.helpers import websocket_url_from_config
+from soothe_client.wire.codec import (
     ConnectionInitEnvelope,
     ConnectionInitParams,
     ErrorEnvelope,
@@ -19,8 +20,6 @@ from soothe_sdk.wire.codec import (
     decode_envelope,
     encode_envelope,
 )
-
-from soothe_client.helpers import websocket_url_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +33,9 @@ _DAEMON_READY_POLL_INTERVAL_S = 0.05
 _DEFAULT_MAX_FRAME_SIZE = 10 * 1024 * 1024
 
 try:
-    from soothe_sdk import __version__ as _client_version
+    from importlib.metadata import version as _pkg_version
+
+    _client_version = _pkg_version("soothe-client-python")
 except Exception:  # pragma: no cover
     _client_version = "0.0.0"
 

@@ -13,9 +13,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
-from soothe_sdk.wire.codec import ProtocolError
-
 from soothe_client.websocket import WebSocketClient
+from soothe_client.wire.codec import ProtocolError
 
 logger = logging.getLogger(__name__)
 

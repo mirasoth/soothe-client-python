@@ -47,7 +47,7 @@ _REQUEST_METHOD_ALIASES = {
 
 def _coerce_appkit_wire_message(msg: dict[str, Any], client: WebSocketClient) -> dict[str, Any]:
     """Upgrade flat appkit dicts to protocol-1 envelopes when needed."""
-    from soothe_sdk.wire.codec import MessageType, WireEnvelope
+    from soothe_client.wire.codec import MessageType, WireEnvelope
 
     msg_type = str(msg.get("type") or "")
     if msg.get("proto") == "1" or msg_type in _ALREADY_ENVELOPE_TYPES:

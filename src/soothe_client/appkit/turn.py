@@ -14,7 +14,7 @@ import time
 from collections.abc import AsyncIterator, Callable
 from typing import Any, Generic, Protocol, TypeVar
 
-from soothe_sdk.ux.loop_stream import assistant_output_phase
+from soothe_client.ux.loop_stream import assistant_output_phase
 
 logger = logging.getLogger(__name__)
 

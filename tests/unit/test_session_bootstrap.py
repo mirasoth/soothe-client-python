@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from soothe_sdk.wire.codec import ProtocolError
 
 from soothe_client.session import bootstrap_loop_session
+from soothe_client.wire.codec import ProtocolError
 
 
 class _FakeClient:

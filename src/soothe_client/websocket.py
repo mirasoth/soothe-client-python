@@ -13,11 +13,11 @@ from typing import Any, cast
 
 import websockets.asyncio.client
 import websockets.exceptions
-from soothe_sdk.ux.loop_stream import is_stream_terminal_wire_dict
-from soothe_sdk.wire.protocol import decode_websocket_text, encode_websocket_text
 
 from soothe_client.errors import DisconnectCause, ReconnectError, StaleLoopError
 from soothe_client.stream_terminal import TURN_END_CUSTOM_TYPES, stale_pending_frame_label
+from soothe_client.ux.loop_stream import is_stream_terminal_wire_dict
+from soothe_client.wire.protocol import decode_websocket_text, encode_websocket_text
 
 logger = logging.getLogger(__name__)
 
@@ -196,9 +196,11 @@ _DAEMON_READY_POLL_INTERVAL_S = 0.05
 
 # Client version reported in the connection_init handshake.
 try:
-    from soothe_sdk import __version__ as client_version  # noqa: N812
+    from importlib.metadata import version as _pkg_version
+
+    client_version = _pkg_version("soothe-client-python")  # noqa: N816
 except Exception:  # pragma: no cover
-    client_version = "0.0.0"  # noqa: N812
+    client_version = "0.0.0"  # noqa: N816
 
 
 class WebSocketClient:
@@ -669,7 +671,7 @@ class WebSocketClient:
             ProtocolError: If the daemon returns an `error` envelope.
             TimeoutError: If no matching response arrives within `timeout`.
         """
-        from soothe_sdk.wire.codec import MessageType, ProtocolError, WireEnvelope
+        from soothe_client.wire.codec import MessageType, ProtocolError, WireEnvelope
 
         req_id = self._next_request_id()
         envelope = WireEnvelope(
@@ -734,7 +736,7 @@ class WebSocketClient:
         Raises:
             ConnectionError: If not connected or send fails.
         """
-        from soothe_sdk.wire.codec import MessageType, WireEnvelope
+        from soothe_client.wire.codec import MessageType, WireEnvelope
 
         envelope = WireEnvelope(
             proto=proto,
@@ -771,7 +773,7 @@ class WebSocketClient:
             ConnectionError: If not connected.
             ProtocolError: If the daemon sends an `error` within `timeout`.
         """
-        from soothe_sdk.wire.codec import MessageType, ProtocolError, WireEnvelope
+        from soothe_client.wire.codec import MessageType, ProtocolError, WireEnvelope
 
         sub_id = self._next_request_id()
         envelope = WireEnvelope(
@@ -831,7 +833,7 @@ class WebSocketClient:
         Raises:
             ConnectionError: If not connected.
         """
-        from soothe_sdk.wire.codec import MessageType, WireEnvelope
+        from soothe_client.wire.codec import MessageType, WireEnvelope
 
         envelope = WireEnvelope(
             proto=proto,
@@ -849,7 +851,7 @@ class WebSocketClient:
         Raises:
             ConnectionError: If not connected (when no reader task is active).
         """
-        from soothe_sdk.wire.codec import MessageType
+        from soothe_client.wire.codec import MessageType
 
         if self._pending_events:
             event: dict[str, Any] | None = self._pending_events.popleft()
@@ -1032,7 +1034,7 @@ class WebSocketClient:
         timeout: float = 10.0,
     ) -> dict[str, Any]:
         """Merge partial state into a loop (`loop_state_update`)."""
-        from soothe_sdk.wire.protocol import _serialize_for_json
+        from soothe_client.wire.protocol import _serialize_for_json
 
         payload_values = _serialize_for_json(values)
         if not isinstance(payload_values, dict):
@@ -1186,7 +1188,7 @@ class WebSocketClient:
             StaleLoopError: Reattach accepted but liveness probe failed.
             ProtocolError / ConnectionError: Transport or RPC failures before probe.
         """
-        from soothe_sdk.wire.codec import ProtocolError
+        from soothe_client.wire.codec import ProtocolError
 
         lid = str(loop_id or "").strip()
         if not lid:
@@ -1313,7 +1315,7 @@ class WebSocketClient:
         Safe to call even if the connection may be closed — silently succeeds;
         `wait_for_connection_ack` will timeout or find a pending ack.
         """
-        from soothe_sdk.wire.codec import ConnectionInitEnvelope, ConnectionInitParams
+        from soothe_client.wire.codec import ConnectionInitEnvelope, ConnectionInitParams
 
         envelope = ConnectionInitEnvelope(
             params=ConnectionInitParams(

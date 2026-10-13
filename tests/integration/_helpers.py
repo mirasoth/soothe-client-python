@@ -9,7 +9,7 @@ from typing import Any
 
 from soothe_client import WebSocketClient, fetch_execution_state
 
-# Wire event type emitted when a turn's stream ends (soothe_sdk.core.events).
+# Wire event type emitted when a turn's stream ends (soothe_client.core.events).
 # A client observes turn completion through this frame, not through the loop
 # metadata ``status`` field, which is reconciled to ``idle`` only on a slow
 # periodic sweep (see ``LoopStatusReconciliationConfig``).

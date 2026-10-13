@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Absorb the client-side shared contracts formerly provided by the `soothe-sdk` dependency (the SDK is being dissolved; `soothe-client-python` is the canonical home for the client-side copies, mirroring how the Go and Rust clients already ship their own codec):
+  - `soothe_client.wire` — Protocol-1 codec (`WireEnvelope`, `ConnectionInit*`, `Batch*`, `ProtocolError`, encode/decode helpers) and `wire.protocol` (`decode_websocket_text` / `encode_websocket_text` / `WorkspaceMapping` / `preview_first`).
+  - `soothe_client.core` — wire event type constants and models (`events`), verbosity tiers (`verbosity`), subagent wire helpers (`subagent_wire`).
+  - `soothe_client.display` — card binder / ledger / wire parse helpers, transcript types (`MessageData`), message processing, tool result formatting, goal snapshot types.
+  - `soothe_client.ux` — event classification, loop stream phases, task/execute namespaces, stream tool wire, subagent progress/display helpers.
+  - `soothe_client.tools` — tool display metadata registry.
+  - `soothe_client.utils` — formatting, CLI logging helpers (`GlobalInputHistory`, `resolve_cli_log_level`, `setup_logging`), parsing, serde.
+  - `soothe_client.paths` — `SOOTHE_HOME` / `SOOTHE_DATA_DIR` constants and SQLite path resolvers.
+
+### Changed
+- Drop the `soothe-sdk` dependency; `langchain-core` is now a direct dependency (wire codec message serde). Internal imports switch from `soothe_sdk.*` to `soothe_client.*` one-to-one; the client version in the `connection_init` handshake is now read from this package instead of the SDK.
+
 ## [1.0.24] - 2026-09-27
 
 ### Fixed

@@ -6,9 +6,9 @@ from typing import Any
 from unittest.mock import patch
 
 import pytest
-from soothe_sdk.wire.codec import ProtocolError
 
 from soothe_client.helpers import protocol1_rpc
+from soothe_client.wire.codec import ProtocolError
 
 
 class _FakeClient:

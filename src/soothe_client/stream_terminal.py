@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, TypeGuard
 
-from soothe_sdk.core.events import (
+from soothe_client.core.events import (
     CARD_CREATED,
     CARD_FINALIZED,
     CARD_REPLAY_BEGIN,

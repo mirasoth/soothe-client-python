@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import importlib.metadata
 
-from soothe_sdk.wire.codec import ProtocolError
-
 from soothe_client.command_client import (
     AsyncCommandClient,
     CommandClient,
@@ -52,6 +50,7 @@ from soothe_client.session import (
     connect_websocket_with_retries,
 )
 from soothe_client.websocket import WebSocketClient
+from soothe_client.wire.codec import ProtocolError
 
 try:
     __version__ = importlib.metadata.version("soothe-client-python")

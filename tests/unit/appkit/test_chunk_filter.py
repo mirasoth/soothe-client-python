@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from soothe_client.appkit.chunk_filter import (
-    message_chunk_is_non_actionable,
     should_drop_stream_chunk_early,
     updates_chunk_is_noop,
 )
