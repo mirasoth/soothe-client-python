@@ -88,7 +88,7 @@ def subagent_wire_row_params(
         args_preview = str(data.get("args_preview", "") or "").strip()
         if not tool_name and data.get("step_index") is not None:
             try:
-                idx = int(data.get("step_index"))
+                idx = int(data.get("step_index") or 0)
             except (TypeError, ValueError):
                 idx = 0
             tool_name = f"BrowserStep#{idx}" if idx > 0 else "BrowserStep"

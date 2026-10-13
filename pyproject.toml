@@ -77,6 +77,12 @@ disallow_untyped_defs = true
 packages = ["soothe_client"]
 mypy_path = "src"
 
+# langgraph is an agent-axis dependency; client modules reference it only via
+# lazy/TYPE_CHECKING imports (utils.serde allowlist, core.subagent_wire writer).
+[[tool.mypy.overrides]]
+module = ["langgraph.*"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests/unit", "examples/appkit"]

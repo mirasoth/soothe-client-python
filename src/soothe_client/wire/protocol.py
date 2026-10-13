@@ -6,7 +6,7 @@ import contextlib
 import json
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ def decode_websocket_text(text: str) -> dict[str, Any] | None:
     if not stripped:
         return None
     try:
-        return json.loads(stripped)
+        return cast("dict[str, Any]", json.loads(stripped))
     except json.JSONDecodeError:
         logger.debug("Invalid daemon WebSocket JSON: %s", preview_first(stripped, 120))
         return None
@@ -99,7 +99,7 @@ def decode(line: bytes) -> dict[str, Any] | None:
     if not text:
         return None
     try:
-        return json.loads(text)
+        return cast("dict[str, Any]", json.loads(text))
     except json.JSONDecodeError:
         logger.debug("Invalid daemon protocol line: %s", preview_first(text, 120))
         return None
@@ -146,12 +146,13 @@ class WorkspaceMapping:
         Paths outside container_root are returned unchanged.
         Only matches at path boundaries (avoids partial prefix matches).
         """
-        if not self.is_configured:
+        host_root, container_root = self.host_root, self.container_root
+        if host_root is None or container_root is None or not self.is_configured:
             return path
-        if path == self.container_root:
-            return self.host_root
-        if path.startswith(self.container_root + "/"):
-            return self.host_root + path[len(self.container_root) :]
+        if path == container_root:
+            return host_root
+        if path.startswith(container_root + "/"):
+            return host_root + path[len(container_root) :]
         return path
 
     def translate_to_container(self, path: str) -> str:
@@ -160,10 +161,11 @@ class WorkspaceMapping:
         Paths outside host_root are returned unchanged.
         Only matches at path boundaries (avoids partial prefix matches).
         """
-        if not self.is_configured:
+        host_root, container_root = self.host_root, self.container_root
+        if host_root is None or container_root is None or not self.is_configured:
             return path
-        if path == self.host_root:
-            return self.container_root
-        if path.startswith(self.host_root + "/"):
-            return self.container_root + path[len(self.host_root) :]
+        if path == host_root:
+            return container_root
+        if path.startswith(host_root + "/"):
+            return container_root + path[len(host_root) :]
         return path

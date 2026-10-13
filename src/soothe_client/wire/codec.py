@@ -15,7 +15,7 @@ silently dropping all chunks after the first.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, cast
 
 # ``messages_from_dict`` / ``_message_from_dict`` only accept short wire tags (``ai``,
 # ``human``, ``tool``, …) or explicit ``*Chunk`` tags — not Pydantic class names like
@@ -653,7 +653,7 @@ def encode_envelope(envelope: BaseModel) -> str:
     return json.dumps(payload, separators=(",", ":"))
 
 
-def decode_envelope(text: str) -> dict[str, Any] | list[Any] | None:
+def decode_envelope(text: str | bytes) -> dict[str, Any] | list[Any] | None:
     """Parse JSON text from a WebSocket frame into a raw dict or list.
 
     Validation against a specific envelope model happens separately (the
@@ -661,16 +661,17 @@ def decode_envelope(text: str) -> dict[str, Any] | list[Any] | None:
     or invalid JSON. A JSON array is returned as-is (batch form).
 
     Args:
-        text: Raw frame payload.
+        text: Raw frame payload (text or bytes).
 
     Returns:
         Parsed message dict, parsed list (batch), or ``None``.
     """
-    stripped = text.strip()
+    raw = text if isinstance(text, str) else text.decode()
+    stripped = raw.strip()
     if not stripped:
         return None
     try:
-        return json.loads(stripped)
+        return cast("dict[str, Any] | list[Any]", json.loads(stripped))
     except json.JSONDecodeError:
         return None
 
