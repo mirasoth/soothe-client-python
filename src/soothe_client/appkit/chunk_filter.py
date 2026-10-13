@@ -61,8 +61,17 @@ def _plain_text(msg: dict[str, Any]) -> str:
     return ""
 
 
+def _dict_has_reasoning_content(msg: dict[str, Any]) -> bool:
+    """True when a wire message dict carries captured reasoning in ``additional_kwargs``."""
+    body = _wire_body(msg)
+    ak = body.get("additional_kwargs")
+    if not isinstance(ak, dict):
+        return False
+    return bool(str(ak.get("reasoning_content") or "").strip())
+
+
 def message_chunk_is_non_actionable(data: Any) -> bool:
-    """True when a wire `messages` pair has no tool, text, or loop phase payload."""
+    """True when a wire `messages` pair has no tool, text, reasoning, or loop phase payload."""
     if not isinstance(data, (list, tuple)) or len(data) != _MSG_PAIR_LEN:
         return False
     msg = data[0]
@@ -79,6 +88,8 @@ def message_chunk_is_non_actionable(data: Any) -> bool:
         return False
     if body.get("phase") or msg.get("phase"):
         return False
+    if _dict_has_reasoning_content(msg):
+        return False
     return not _plain_text(msg).strip()
 
 
@@ -93,6 +104,7 @@ def should_drop_stream_chunk_early(namespace: tuple[Any, ...], mode: str, data: 
 
 
 __all__ = [
+    "_dict_has_reasoning_content",
     "message_chunk_is_non_actionable",
     "should_drop_stream_chunk_early",
     "updates_chunk_is_noop",
