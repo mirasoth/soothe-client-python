@@ -28,7 +28,7 @@ from soothe_client.errors import DisconnectCause
 
 TRIARCH_PHASES = frozenset(
     {
-        "quiz",
+        "goal_interrupted",
         "goal_completion",
         "goal_completion",
         "text_completion",

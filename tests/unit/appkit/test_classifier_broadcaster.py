@@ -16,7 +16,7 @@ from soothe_client.appkit import (
 
 TRIARCH_PHASES = frozenset(
     {
-        "quiz",
+        "goal_interrupted",
         "goal_completion",
         "goal_completion",
         "text_completion",
@@ -65,15 +65,15 @@ def test_classifier_rejects_empty_phases() -> None:
 
 def test_classifier_deliverable_phase() -> None:
     cl = _triarch()
-    r = cl.classify(_deliverable_next("quiz", "Hello, this is the answer."), "")
+    r = cl.classify(_deliverable_next("goal_interrupted", "Hello, this is the answer."), "")
     assert r.terminal == ChatEventTerminal.DELIVERABLE_COMPLETE
     assert r.completion_event is not None
-    assert "quiz" in r.completion_event
+    assert "goal_interrupted" in r.completion_event
 
 
 def test_classifier_phase_not_in_config() -> None:
     cl = EventClassifier(ClassifierConfig(deliverable_phases=frozenset({"text_completion"})))
-    r = cl.classify(_deliverable_next("quiz", "Hello, this is the answer."), "")
+    r = cl.classify(_deliverable_next("goal_interrupted", "Hello, this is the answer."), "")
     assert r.terminal != ChatEventTerminal.DELIVERABLE_COMPLETE
 
 
@@ -86,7 +86,7 @@ def test_classifier_streaming_chunk_continue() -> None:
 
 def test_classifier_substantive_reply_guard() -> None:
     cl = _triarch()
-    r = cl.classify(_deliverable_next("quiz", "..."), "")
+    r = cl.classify(_deliverable_next("goal_interrupted", "..."), "")
     assert r.terminal != ChatEventTerminal.DELIVERABLE_COMPLETE
 
 
@@ -98,9 +98,9 @@ def test_classifier_error_envelope() -> None:
     assert "boom" in str(r.err)
 
 
-def test_extract_thinking_step_plan_started() -> None:
+def test_extract_thinking_step_step_started() -> None:
     line, ok = extract_thinking_step(
-        "soothe.cognition.plan.step.started",
+        "soothe.cognition.strange_loop.step.started",
         {"step_id": "1", "description": "Search docs"},
     )
     assert ok
@@ -114,7 +114,7 @@ def test_extract_thinking_step_unknown_event() -> None:
 
 
 def test_default_thinking_step_allowlist_nonempty() -> None:
-    assert "soothe.tool.execution.started" in DEFAULT_THINKING_STEP_EVENTS
+    assert "soothe.tool.invocation.started" in DEFAULT_THINKING_STEP_EVENTS
 
 
 @pytest.mark.asyncio

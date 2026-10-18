@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Aligned the tools registry with soothe-nano 2.0: category `execution` → `shell`, dropped stale `data` / `image` / `academic_research` entries, added the `placement` field; added a twin-drift unit test pinning the client registry to the nano one (`tests/unit/test_tools_twin.py`).
+- Fixed `interaction_mode` docstrings on `stream_turn` / `invoke_skill` to enumerate all modes (`agent` / `ask` / `plan` / `bypass`).
+- Event/phase parity fixes for the retained client-side copies:
+  - `intent_hints.DEFAULT_DELIVERABLE_PHASES`: dropped `quiz` (no host producer), added `goal_interrupted`.
+  - `appkit.thinking_step`: replaced dead progress events (`soothe.cognition.plan.step.*`, `soothe.lifecycle.iteration.started`, `soothe.agent.loop.*`, `soothe.cognition.plan.batch.started`, `soothe.tool.execution.*`) with live ones (`soothe.cognition.strange_loop.step.started/completed`, `soothe.tool.invocation.started/completed`).
+  - WebSocket priority-drop check now matches the bare wire type `tool_call_updates_batch` (nano 2.0 `wire/stream_tool_wire.py`) instead of the removed `soothe.ux.stream_tool_wire.` prefix.
+
 ## [1.2.0] - 2026-10-13
 
 ### Changed

@@ -175,7 +175,7 @@ def test_example_event_classifier() -> None:
 
 def test_example_thinking_step() -> None:
     line, ok = extract_thinking_step(
-        "soothe.tool.execution.started",
+        "soothe.tool.invocation.started",
         {"tool_name": "search"},
     )
     assert ok

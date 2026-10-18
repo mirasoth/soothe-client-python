@@ -12,8 +12,8 @@ EMBED: Final = "embed"
 # Default deliverable phases for turn-ending replies (excludes plan_direct narration).
 DEFAULT_DELIVERABLE_PHASES: frozenset[str] = frozenset(
     {
-        "quiz",
         "goal_completion",
+        "goal_interrupted",
         "chitchat",
         "text_completion",
         "image_to_text",

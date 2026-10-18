@@ -120,7 +120,7 @@ def _inbound_frame_drop_priority(event: dict[str, Any] | None) -> int:
                 if custom_type == "stream_degraded":
                     return _DROP_PRIORITY_CRITICAL
                 # Tool call updates batch - prefer keep
-                if custom_type == "soothe.ux.stream_tool_wire.tool_call_updates_batch":
+                if custom_type == "tool_call_updates_batch":
                     return _DROP_PRIORITY_HIGH
 
         # Messages mode - terminal or goal_completion phase
@@ -904,7 +904,8 @@ class WebSocketClient:
             response_schema_name: Schema name for logging.
             response_schema_strict: Enable strict schema validation.
             clarification_mode: Relay mode (`auto` / `manual`). None = daemon default.
-            interaction_mode: CoreAgent mode (`agent` / `ask`). None = daemon default.
+            interaction_mode: CoreAgent mode (`agent` / `ask` / `plan` / `bypass`).
+                None = daemon default.
             clarification_answer: Treat input as answer to pending clarification.
             clarification_answers: Per-question answers for multi-question clarifications.
             autopilot_rail_id: Optional builtin rail id. When set, the daemon
@@ -1255,7 +1256,8 @@ class WebSocketClient:
             args: Free-form argument string.
             timeout: RPC timeout in seconds.
             clarification_mode: Relay mode for the synthetic turn. None = daemon default.
-            interaction_mode: CoreAgent mode for the synthetic turn. None = daemon default.
+            interaction_mode: CoreAgent mode for the synthetic turn
+                (`agent` / `ask` / `plan` / `bypass`). None = daemon default.
         """
         params: dict[str, Any] = {"skill": skill, "args": args}
         if clarification_mode is not None:

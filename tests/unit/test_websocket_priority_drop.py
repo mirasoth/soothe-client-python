@@ -90,7 +90,7 @@ class TestInboundFrameDropPriority:
             "type": "event",
             "mode": "custom",
             "data": {
-                "type": "soothe.ux.stream_tool_wire.tool_call_updates_batch",
+                "type": "tool_call_updates_batch",
                 "updates": [{"tool_call_id": "t1"}],
             },
         }

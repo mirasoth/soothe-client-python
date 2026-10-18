@@ -34,7 +34,7 @@ from soothe_client.appkit import (
     is_daemon_turn_end_event,
 )
 
-TRIARCH_PHASES = frozenset({"text_completion", "goal_completion", "quiz"})
+TRIARCH_PHASES = frozenset({"text_completion", "goal_completion", "goal_interrupted"})
 
 
 class MemStore:

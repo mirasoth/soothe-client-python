@@ -11,7 +11,7 @@ def test_default_deliverable_phases_excludes_plan_direct() -> None:
 
 def test_default_deliverable_phases_includes_direct_hints() -> None:
     for phase in (
-        "quiz",
+        "goal_interrupted",
         "goal_completion",
         "chitchat",
         "text_completion",
