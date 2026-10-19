@@ -274,9 +274,13 @@ class AutopilotTopParams(ParamsBase):
 
 
 class JobCreateParams(ParamsBase):
-    """Params for `method=job_create`."""
+    """Params for `method=job_create`.
+
+    `rail_id` is required (loop-native submission path).
+    """
 
     goal: str = Field(..., min_length=1, description="Root goal text")
+    rail_id: str = Field(..., min_length=1, description="Builtin rail id to bind")
     workspace: str | None = None
     user_id: str | None = None
     guidance: str | None = None

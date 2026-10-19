@@ -20,16 +20,37 @@ async def test_job_create_status_cancel(
     client = AsyncCommandClient(ws_url=daemon_url)
     created = await client.job_create(
         "echo integration-smoke",
+        rail_id="auto",
         workspace=str(workspace_dir),
     )
-    job_id = created.get("job_id") or created.get("id")
-    assert job_id, f"job_create missing id: {created}"
+    # Loop-native submission: response carries loop_id + status=submitted.
+    loop_id = created.get("loop_id") or created.get("job_id") or created.get("id")
+    assert loop_id, f"job_create missing id: {created}"
+    assert created.get("status") == "submitted"
 
-    status = await client.job_status(str(job_id))
-    assert status.get("job_id") == job_id or status.get("id") == job_id or "status" in status
+    # job_status / job_cancel are legacy AutopilotService DAG RPCs, removed
+    # on v1.2.0+ daemons (they return -32402 service-unavailable). Soft-fail
+    # that case — the loop-native path is verified by job_create above.
+    # (Mirrors the Rust/Go clients' soft-fail handling.)
+    try:
+        status = await client.job_status(str(loop_id))
+    except RuntimeError as exc:
+        if "-32402" not in str(exc) and "AutopilotService" not in str(exc):
+            raise
+    else:
+        assert (
+            status.get("job_id") == loop_id
+            or status.get("id") == loop_id
+            or "status" in status
+        )
 
-    cancelled = await client.job_cancel(str(job_id))
-    assert isinstance(cancelled, dict)
+    try:
+        cancelled = await client.job_cancel(str(loop_id))
+    except RuntimeError as exc:
+        if "-32402" not in str(exc) and "AutopilotService" not in str(exc):
+            raise
+    else:
+        assert isinstance(cancelled, dict)
 
 
 @pytest.mark.asyncio

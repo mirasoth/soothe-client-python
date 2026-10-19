@@ -186,16 +186,25 @@ class TestJobCreateParams:
     """JobCreateParams validation."""
 
     def test_valid_with_goal(self) -> None:
-        params = JobCreateParams(goal="Build feature X")
+        params = JobCreateParams(goal="Build feature X", rail_id="auto")
         assert params.goal == "Build feature X"
+        assert params.rail_id == "auto"
 
     def test_missing_goal_raises(self) -> None:
         with pytest.raises(ValidationError):
-            JobCreateParams()  # type: ignore[call-arg]
+            JobCreateParams(rail_id="auto")  # type: ignore[call-arg]
+
+    def test_missing_rail_id_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            JobCreateParams(goal="Build feature X")  # type: ignore[call-arg]
 
     def test_empty_goal_raises(self) -> None:
         with pytest.raises(ValidationError):
-            JobCreateParams(goal="")
+            JobCreateParams(goal="", rail_id="auto")
+
+    def test_empty_rail_id_raises(self) -> None:
+        with pytest.raises(ValidationError):
+            JobCreateParams(goal="Build feature X", rail_id="")
 
 
 class TestJobGuidanceParams:

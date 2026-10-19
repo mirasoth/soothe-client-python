@@ -112,6 +112,9 @@ async def main() -> None:
             ClassifierConfig(
                 deliverable_phases=DEFAULT_DELIVERABLE_PHASES,
                 treat_status_idle_as_complete=True,
+                # One-word text_completion replies are shorter than the default
+                # 8-rune deliverable floor used by product UIs.
+                min_deliverable_runes=1,
             )
         ),
         store,

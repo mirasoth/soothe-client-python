@@ -147,8 +147,8 @@ class AsyncCommandClient:
     Example::
 
         client = AsyncCommandClient("ws://127.0.0.1:8765")
-        created = await client.job_create("Summarize the README")
-        await client.job_cancel(created["job_id"])
+        created = await client.job_create("Summarize the README", rail_id="auto")
+        await client.job_cancel(created["loop_id"])
 
     Args:
         ws_url: Daemon WebSocket URL.
@@ -336,11 +336,25 @@ class AsyncCommandClient:
         self,
         goal: str,
         *,
+        rail_id: str,
         workspace: str | None = None,
         guidance: str | None = None,
     ) -> dict[str, Any]:
-        """Create a background job (root goal). Returns `job_id` + status."""
-        payload: dict[str, Any] = {"goal": goal}
+        """Create a background job (rail-pinned loop submission).
+
+        `rail_id` is required (loop-native submission path). The daemon creates
+        a fresh loop, enqueues a `loop_input` carrying `autopilot_rail_id`, and
+        returns `{"loop_id": ..., "rail_id": ..., "status": "submitted"}`.
+
+        Args:
+            goal: Root goal description.
+            rail_id: Builtin rail id to bind (e.g. ``"auto"`` or a catalog id).
+            workspace: Optional client workspace hint.
+            guidance: Optional guidance text (forwarded when present).
+        """
+        if not isinstance(rail_id, str) or not rail_id.strip():
+            raise ValueError("rail_id is required (loop-native submission path)")
+        payload: dict[str, Any] = {"goal": goal, "rail_id": rail_id.strip()}
         if workspace:
             payload["workspace"] = workspace
         if guidance:
@@ -527,15 +541,21 @@ class CommandClient:
         self,
         goal: str,
         *,
+        rail_id: str,
         workspace: str | None = None,
         guidance: str | None = None,
     ) -> dict[str, Any]:
-        """Create a background job (root goal)."""
+        """Create a background job (rail-pinned loop submission).
+
+        `rail_id` is required (loop-native submission path). Returns
+        `{"loop_id": ..., "rail_id": ..., "status": "submitted"}`.
+        """
         return cast(
             dict[str, Any],
             self._run_async(
                 self._client.job_create(
                     goal,
+                    rail_id=rail_id,
                     workspace=workspace,
                     guidance=guidance,
                 )
