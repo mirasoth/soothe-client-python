@@ -107,7 +107,6 @@ CARD_REPLAY_WIRE_TYPES = frozenset({CARD_REPLAY_BEGIN, CARD_REPLAY_END})
 # host re-export these rather than redefine the literals.)
 ERROR = "soothe.error.general.failed"
 LLM_CALL_BOUNDARY = "soothe.cognition.llm.call.boundary"
-LLM_RETRY_ATTEMPT = "soothe.cognition.llm.retry.attempt"
 MEMORY_RECALLED = "soothe.internal.memory.recalled"
 MEMORY_STORED = "soothe.internal.memory.stored"
 POLICY_CHECKED = "soothe.internal.policy.checked"
@@ -155,7 +154,6 @@ __all__ = [
     # Protocol-primitive constants (canonical home; re-exported by nano + host)
     "ERROR",
     "LLM_CALL_BOUNDARY",
-    "LLM_RETRY_ATTEMPT",
     "MEMORY_RECALLED",
     "MEMORY_STORED",
     "POLICY_CHECKED",
