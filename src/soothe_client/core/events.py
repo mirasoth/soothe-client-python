@@ -106,6 +106,7 @@ CARD_REPLAY_WIRE_TYPES = frozenset({CARD_REPLAY_BEGIN, CARD_REPLAY_END})
 # canonical home is the SDK as the protocol-contracts layer. nano and the
 # host re-export these rather than redefine the literals.)
 ERROR = "soothe.error.general.failed"
+LLM_CALL_BOUNDARY = "soothe.cognition.llm.call.boundary"
 LLM_RETRY_ATTEMPT = "soothe.cognition.llm.retry.attempt"
 MEMORY_RECALLED = "soothe.internal.memory.recalled"
 MEMORY_STORED = "soothe.internal.memory.stored"
@@ -153,6 +154,7 @@ __all__ = [
     "CARD_REPLAY_WIRE_TYPES",
     # Protocol-primitive constants (canonical home; re-exported by nano + host)
     "ERROR",
+    "LLM_CALL_BOUNDARY",
     "LLM_RETRY_ATTEMPT",
     "MEMORY_RECALLED",
     "MEMORY_STORED",
