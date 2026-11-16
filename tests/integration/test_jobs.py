@@ -38,11 +38,7 @@ async def test_job_create_status_cancel(
         if "-32402" not in str(exc) and "AutopilotService" not in str(exc):
             raise
     else:
-        assert (
-            status.get("job_id") == loop_id
-            or status.get("id") == loop_id
-            or "status" in status
-        )
+        assert status.get("job_id") == loop_id or status.get("id") == loop_id or "status" in status
 
     try:
         cancelled = await client.job_cancel(str(loop_id))
