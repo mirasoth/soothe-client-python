@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-11-24
+
+### Added
+
+- Step retry/recovery meta on `STEP_PROGRESS` (`display.transcript_types.MessageData`): optional `step_retry_attempt` / `step_retry_max` / `step_recovered` / `step_prior_tool_calls` / `step_prior_duration_ms` (in-execution same-thread recovery), wired into the updatable-field set and the retry event binding branch.
+- Wire-golden fixture refreshed with the host step-retry contract (pin updated).
+
+[Compare with previous version]: https://github.com/mirasoth/soothe-client-python/compare/v1.2.1...v1.2.2
+
 ## [1.2.1] - 2026-11-16
 
 ### Changed
