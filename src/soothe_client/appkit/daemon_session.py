@@ -92,6 +92,10 @@ class DaemonSession:
         # Scoped to the current peer seq namespace: reset on reconnect / loop
         # change — daemon seq is per-process and restarts after daemon restart.
         self._last_turn_end_seq: int = 0
+        # IG-DAEM-004 stream-resume cursor: highest outbound frame seq seen per
+        # loop. Survives reconnects within one daemon lifetime (the daemon seq
+        # namespace is continuous); reset on loop change and daemon restart.
+        self._stream_seq_by_loop: dict[str, int] = {}
         # Last accepted terminal's turn generation (refuse leftover prior-gen
         # status=running binds when expected_turn_id is still unset).
         self._last_completed_turn_gen: int = 0
@@ -104,6 +108,41 @@ class DaemonSession:
         self._last_turn_end_seq = 0
         self._last_completed_turn_gen = 0
         self._expected_turn_id = None
+
+    # -- IG-DAEM-004 stream-resume cursor -------------------------------------
+
+    def _ensure_stream_seq_attrs(self) -> None:
+        """Initialize stream-cursor attrs for partially constructed sessions (tests)."""
+        if not hasattr(self, "_stream_seq_by_loop"):
+            self._stream_seq_by_loop = {}
+
+    def _note_stream_seq(self, loop_id: str, seq: int) -> None:
+        """Track the highest outbound seq seen for `loop_id` (stream_resume cursor)."""
+        self._ensure_stream_seq_attrs()
+        lid = str(loop_id or "").strip()
+        if not lid or seq <= self._stream_seq_by_loop.get(lid, 0):
+            return
+        self._stream_seq_by_loop[lid] = seq
+        # Bound the per-loop cursor map (LRU by update order).
+        while len(self._stream_seq_by_loop) > 32:
+            oldest = next(iter(self._stream_seq_by_loop))
+            self._stream_seq_by_loop.pop(oldest, None)
+
+    def last_stream_seq(self, loop_id: str) -> int:
+        """Return the resume cursor for `loop_id` (0 = nothing seen)."""
+        self._ensure_stream_seq_attrs()
+        return self._stream_seq_by_loop.get(str(loop_id or "").strip(), 0)
+
+    def reset_stream_seq_tracking(self, loop_id: str | None = None) -> None:
+        """Reset resume cursors after a daemon restart rewinds the seq namespace.
+
+        Resets all loops when `loop_id` is None, otherwise just that loop.
+        """
+        self._ensure_stream_seq_attrs()
+        if loop_id is None:
+            self._stream_seq_by_loop.clear()
+        else:
+            self._stream_seq_by_loop.pop(str(loop_id).strip(), None)
 
     def _note_completed_turn_gen(self, turn_id: str | None) -> None:
         """Raise the completed-generation floor after an accepted terminal."""
@@ -343,6 +382,11 @@ class DaemonSession:
                 err_obj = event.get("error") or {}
                 err_msg = str(err_obj.get("message") or event.get("message") or "daemon error")
                 raise RuntimeError(err_msg)
+            ev_seq = frame_seq(event)
+            if ev_seq is not None:
+                # IG-DAEM-004: drain-consumed frames (event and status alike)
+                # advance the resume cursor.
+                self._note_stream_seq(exp or "", ev_seq)
             if event_type == "status":
                 loop_ev = event.get("loop_id")
                 if isinstance(loop_ev, str) and loop_ev:
@@ -382,6 +426,42 @@ class DaemonSession:
         async with self._rpc_lock:
             await self._ensure_rpc_connected()
             return await self._rpc_client.request("loop_list", {"limit": limit}, timeout=15.0)
+
+    async def fetch_daemon_info(self) -> dict[str, Any] | None:
+        """Fetch daemon identity for restart detection (IG-DAEM-004).
+
+        Returns None when the RPC fails (older daemon without the method) so
+        callers treat the epoch as unknown rather than as a restart.
+        """
+        async with self._rpc_lock:
+            try:
+                await self._ensure_rpc_connected()
+                return await self._rpc_client.request("daemon_info", {}, timeout=5.0)
+            except Exception:
+                logger.debug("daemon_info RPC failed", exc_info=True)
+                return None
+
+    async def resume_stream(self, loop_id: str, last_seq: int) -> dict[str, Any] | None:
+        """Replay buffered stream frames after `last_seq` (IG-DAEM-004 follow-up).
+
+        Returns the `stream_resume` result (`frames`, `gap`, `oldest_seq`,
+        `newest_seq`), or None when the RPC fails (older daemon) so callers
+        fall back to the card-ledger reattach replay.
+        """
+        lid = str(loop_id or "").strip()
+        if not lid or last_seq < 0:
+            return None
+        async with self._rpc_lock:
+            try:
+                await self._ensure_rpc_connected()
+                return await self._rpc_client.request(
+                    "stream_resume",
+                    {"loop_id": lid, "last_seq": int(last_seq)},
+                    timeout=10.0,
+                )
+            except Exception:
+                logger.debug("stream_resume RPC failed", exc_info=True)
+                return None
 
     async def iter_turn_chunks(
         self,
@@ -500,8 +580,13 @@ class DaemonSession:
 
                     # IG-616 phase 5: drop frames at or before prior turn end seq.
                     ev_seq = frame_seq(event)
-                    if ev_seq is not None and last_end_seq > 0 and ev_seq <= last_end_seq:
-                        continue
+                    if ev_seq is not None:
+                        # IG-DAEM-004: advance the stream-resume cursor for
+                        # every accepted frame (not just turn terminals) so a
+                        # reconnect can replay exactly what was missed.
+                        self._note_stream_seq(expected_loop_id or "", ev_seq)
+                        if last_end_seq > 0 and ev_seq <= last_end_seq:
+                            continue
 
                     # Once bound, drop absent/mismatched turn_id on event/status
                     # (except status=running, which may rebind to a newer gen;

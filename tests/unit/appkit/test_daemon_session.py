@@ -128,6 +128,71 @@ async def test_daemon_session_fetch_loop_history_maps_payload(
 
 
 @pytest.mark.asyncio
+async def test_iter_turn_chunks_tracks_stream_seq_cursor() -> None:
+    """Every accepted frame advances the per-loop stream-resume cursor."""
+    session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
+    session._loop_id = "L1"
+
+    events = [
+        {"type": "status", "state": "running", "loop_id": "L1", "turn_id": "L1:1", "seq": 1},
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "turn_id": "L1:1",
+            "seq": 5,
+            "namespace": ["n"],
+            "mode": "messages",
+            "data": {"type": "ai", "content": "hi"},
+        },
+        {
+            "type": "event",
+            "loop_id": "L1",
+            "turn_id": "L1:1",
+            "seq": 7,
+            "namespace": ["n"],
+            "mode": "custom",
+            "data": {"type": "soothe.stream.end", "scope": "turn", "turn_id": "L1:1"},
+        },
+        {"type": "status", "state": "idle", "loop_id": "L1", "turn_id": "L1:1", "seq": 8},
+        None,
+    ]
+    stub = SimpleNamespace(
+        read_event=AsyncMock(side_effect=events),
+        peel_stale_pending_control_events=MagicMock(return_value=[]),
+        inbound_dropped=0,
+        is_connection_alive=MagicMock(return_value=True),
+    )
+    session._client = stub  # type: ignore[assignment]
+
+    async for _chunk in session.iter_turn_chunks():
+        pass
+
+    assert session.last_stream_seq("L1") == 8
+    # Cursor survives a same-daemon reconnect (seq floor reset must not clear it).
+    session._reset_turn_seq_floor()
+    assert session.last_stream_seq("L1") == 8
+
+    # Explicit reset (daemon restart rewinds the namespace).
+    session.reset_stream_seq_tracking("L1")
+    assert session.last_stream_seq("L1") == 0
+
+    # Per-loop isolation.
+    session._note_stream_seq("L1", 3)
+    session._note_stream_seq("L2", 9)
+    assert session.last_stream_seq("L1") == 3
+    assert session.last_stream_seq("L2") == 9
+
+
+def test_stream_seq_cursor_lru_bound() -> None:
+    session = DaemonSession("ws://127.0.0.1:9")
+    for i in range(40):
+        session._note_stream_seq(f"loop-{i}", 1)
+    assert len(session._stream_seq_by_loop) <= 32
+    assert session.last_stream_seq("loop-0") == 0  # evicted
+    assert session.last_stream_seq("loop-39") == 1  # retained
+
+
+@pytest.mark.asyncio
 async def test_iter_turn_chunks_ends_on_idle_after_payload() -> None:
     session = DaemonSession("ws://127.0.0.1:9", post_idle_drain_deadline=0.0)
     session._loop_id = "L1"
@@ -776,6 +841,49 @@ async def test_fetch_execution_state_rpc_error_returns_default() -> None:
     assert state.status is None
     assert state.active_runner is False
     assert state.plan is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_daemon_info_uses_rpc_and_falls_back_to_none() -> None:
+    session = DaemonSession("ws://127.0.0.1:9")
+    session._rpc_connected = True
+    session._rpc_client.request = AsyncMock(
+        return_value={"daemon_id": "123:t0", "pid": 123, "started_at": "t0"}
+    )
+
+    info = await session.fetch_daemon_info()
+    assert info is not None
+    assert info["daemon_id"] == "123:t0"
+    session._rpc_client.request.assert_awaited_once_with("daemon_info", {}, timeout=5.0)
+
+    session._rpc_client.request = AsyncMock(side_effect=RuntimeError("older daemon"))
+    assert await session.fetch_daemon_info() is None
+
+
+@pytest.mark.asyncio
+async def test_resume_stream_uses_rpc_and_falls_back_to_none() -> None:
+    session = DaemonSession("ws://127.0.0.1:9")
+    session._rpc_connected = True
+    session._rpc_client.request = AsyncMock(
+        return_value={"frames": [{"seq": 2}], "gap": False, "oldest_seq": 2, "newest_seq": 2}
+    )
+
+    result = await session.resume_stream("loop-a", 1)
+    assert result is not None
+    assert [f["seq"] for f in result["frames"]] == [2]
+    session._rpc_client.request.assert_awaited_once_with(
+        "stream_resume", {"loop_id": "loop-a", "last_seq": 1}, timeout=10.0
+    )
+
+    # Bad input short-circuits without an RPC.
+    session._rpc_client.request = AsyncMock()
+    assert await session.resume_stream("", 1) is None
+    assert await session.resume_stream("loop-a", -1) is None
+    session._rpc_client.request.assert_not_awaited()
+
+    # RPC failure (older daemon) degrades to None.
+    session._rpc_client.request = AsyncMock(side_effect=RuntimeError("boom"))
+    assert await session.resume_stream("loop-a", 1) is None
 
 
 @pytest.mark.asyncio
